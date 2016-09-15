@@ -7,7 +7,7 @@ type ErrNotBtrfs struct {
 }
 
 func (e ErrNotBtrfs) Error() string {
-	return fmt.Sprintf("path %q is not a btrfs", e.Path)
+	return fmt.Sprintf("not a btrfs filesystem: %s", e.Path)
 }
 
 // Error codes as returned by the kernel

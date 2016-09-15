@@ -65,10 +65,6 @@ func Ioctl(f *os.File, ioc uintptr, addr uintptr) error {
 	return nil
 }
 
-func SizeOf(arg interface{}) uintptr {
-	return reflect.TypeOf(arg).Size()
-}
-
 func Do(f *os.File, ioc uintptr, arg interface{}) error {
 	var addr uintptr
 	if arg != nil {

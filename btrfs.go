@@ -1,12 +1,12 @@
 package btrfs
 
 import (
+	"fmt"
 	"github.com/dennwc/btrfs/ioctl"
+	"io"
 	"os"
+	"path/filepath"
 )
-
-//go:generate go run cmd/hgen.go -p btrfs -o btrfs_tree_hc.go btrfs_tree.h
-//go:generate go fmt -w btrfs_tree_hc.go
 
 const SuperMagic = 0x9123683E
 
@@ -19,6 +19,12 @@ func Open(path string) (*FS, error) {
 	dir, err := os.Open(path)
 	if err != nil {
 		return nil, err
+	} else if st, err := dir.Stat(); err != nil {
+		dir.Close()
+		return nil, err
+	} else if !st.IsDir() {
+		dir.Close()
+		return nil, fmt.Errorf("not a directory: %s", path)
 	}
 	return &FS{f: dir}, nil
 }
@@ -138,4 +144,40 @@ func (f *FS) Sync() (err error) {
 		return
 	}
 	return ioctl.Do(f.f, _BTRFS_IOC_WAIT_SYNC, nil)
+}
+
+func (f *FS) CreateSubVolume(name string) error {
+	return CreateSubVolume(filepath.Join(f.f.Name(), name))
+}
+
+func (f *FS) DeleteSubVolume(name string) error {
+	return DeleteSubVolume(filepath.Join(f.f.Name(), name))
+}
+
+func (f *FS) Snapshot(dst string, ro bool) error {
+	return SnapshotSubVolume(f.f.Name(), filepath.Join(f.f.Name(), dst), ro)
+}
+
+func (f *FS) SnapshotSubVolume(name string, dst string, ro bool) error {
+	return SnapshotSubVolume(filepath.Join(f.f.Name(), name),
+		filepath.Join(f.f.Name(), dst), ro)
+}
+
+func (f *FS) Send(w io.Writer, parent string, subvols ...string) error {
+	if parent != "" {
+		parent = filepath.Join(f.f.Name(), parent)
+	}
+	sub := make([]string, 0, len(subvols))
+	for _, s := range subvols {
+		sub = append(sub, filepath.Join(f.f.Name(), s))
+	}
+	return Send(w, parent, sub...)
+}
+
+func (f *FS) Receive(r io.Reader) error {
+	return Receive(r, f.f.Name())
+}
+
+func (f *FS) ReceiveTo(r io.Reader, mount string) error {
+	return Receive(r, filepath.Join(f.f.Name(), mount))
 }

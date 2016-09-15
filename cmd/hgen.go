@@ -9,20 +9,47 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 )
 
 var (
-	f_pkg = flag.String("p", "main", "package name for generated file")
-	f_out = flag.String("o", "-", "output file")
+	f_pkg      = flag.String("p", "main", "package name for generated file")
+	f_out      = flag.String("o", "-", "output file")
+	f_unexport = flag.Bool("u", true, "make all definitions unexported")
+	f_goname   = flag.Bool("g", true, "rename symbols to follow Go conventions")
+	f_trim     = flag.String("t", "", "prefix to trim from names")
 )
 
 var (
-	reDefineIntConst = regexp.MustCompile(`#define\s+([A-Za-z_]+)\s+(\(?\d+(?:U?LL)?(?:\s*<<\s*\d+)?\)?)`)
+	reDefineIntConst = regexp.MustCompile(`#define\s+([A-Za-z_]+)\s+(\(?-?\d+(?:U?LL)?(?:\s*<<\s*\d+)?\)?)`)
+	reNegULL         = regexp.MustCompile(`-(\d+)ULL`)
 )
 
 func constName(s string) string {
+	s = strings.TrimPrefix(s, *f_trim)
+	if *f_goname {
+		buf := bytes.NewBuffer(nil)
+		buf.Grow(len(s))
+		up := !*f_unexport
+		for _, r := range s {
+			if r == '_' {
+				up = true
+				continue
+			}
+			if up {
+				up = false
+				r = unicode.ToUpper(r)
+			} else {
+				r = unicode.ToLower(r)
+			}
+			buf.WriteRune(r)
+		}
+		s = buf.String()
+	} else if *f_unexport {
+		s = "_" + s
+	}
 	return s
 }
 
@@ -41,6 +68,7 @@ func process(w io.Writer, path string) error {
 	)
 
 	nl := true
+	fmt.Fprint(w, "// This code was auto-generated; DO NOT EDIT!\n\n")
 	defer fmt.Fprintln(w, ")")
 	for {
 		line, err := r.ReadBytes('\n')
@@ -96,6 +124,15 @@ func process(w io.Writer, path string) error {
 			sub := reDefineIntConst.FindStringSubmatch(string(line))
 			if len(sub) > 0 {
 				name, val := sub[1], sub[2]
+				if sub := reNegULL.FindAllStringSubmatch(val, -1); len(sub) > 0 {
+					for _, s := range sub {
+						v, err := strconv.ParseInt(s[1], 10, 64)
+						if err != nil {
+							panic(err)
+						}
+						val = strings.Replace(val, s[0], fmt.Sprintf("0x%x /* -%s */", uint64(-v), s[1]), -1)
+					}
+				}
 				val = strings.Replace(val, "ULL", "", -1)
 				fmt.Fprintf(w, "\t%s = %s\n", constName(name), val)
 				continue

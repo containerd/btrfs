@@ -64,10 +64,26 @@ type btrfs_ioctl_vol_args_v2_u1 struct {
 
 const subvolNameMax = 4039
 
+type subvolFlags uint64
+
+// flags for subvolumes
+//
+// Used by:
+// struct btrfs_ioctl_vol_args_v2.flags
+//
+// BTRFS_SUBVOL_RDONLY is also provided/consumed by the following ioctls:
+// - BTRFS_IOC_SUBVOL_GETFLAGS
+// - BTRFS_IOC_SUBVOL_SETFLAGS
+const (
+	subvolCreateAsync   = subvolFlags(1 << 0)
+	subvolReadOnly      = subvolFlags(1 << 1)
+	subvolQGroupInherit = subvolFlags(1 << 2)
+)
+
 type btrfs_ioctl_vol_args_v2 struct {
 	fd      int64
 	transid uint64
-	flags   uint64
+	flags   subvolFlags
 	btrfs_ioctl_vol_args_v2_u1
 	unused [2]uint64
 	name   [subvolNameMax + 1]byte
@@ -267,7 +283,7 @@ type btrfs_ioctl_search_key struct {
 	max_type uint32
 	// how many items did userland ask for, and how many are we returning
 	nr_items uint32
-	unused   [4 + 4*8]byte
+	unused   [36]byte
 }
 
 type btrfs_ioctl_search_header struct {
@@ -507,6 +523,8 @@ var (
 	_BTRFS_IOC_SPACE_INFO             = ioctl.IOWR(ioctlMagic, 20, unsafe.Sizeof(btrfs_ioctl_space_args{}))
 	_BTRFS_IOC_START_SYNC             = ioctl.IOR(ioctlMagic, 24, 8) // uint64
 	_BTRFS_IOC_WAIT_SYNC              = ioctl.IOW(ioctlMagic, 22, 8) // uint64
+	_BTRFS_IOC_SNAP_CREATE_V2         = ioctl.IOW(ioctlMagic, 23, unsafe.Sizeof(btrfs_ioctl_vol_args_v2{}))
+	_BTRFS_IOC_SUBVOL_CREATE_V2       = ioctl.IOW(ioctlMagic, 24, unsafe.Sizeof(btrfs_ioctl_vol_args_v2{}))
 	_BTRFS_IOC_SUBVOL_GETFLAGS        = ioctl.IOR(ioctlMagic, 25, 8) // uint64
 	_BTRFS_IOC_SUBVOL_SETFLAGS        = ioctl.IOW(ioctlMagic, 26, 8) // uint64
 	_BTRFS_IOC_SCRUB                  = ioctl.IOWR(ioctlMagic, 27, unsafe.Sizeof(btrfs_ioctl_scrub_args{}))
@@ -538,8 +556,12 @@ var (
 	_BTRFS_IOC_GET_SUPPORTED_FEATURES = ioctl.IOR(ioctlMagic, 57, unsafe.Sizeof([3]btrfs_ioctl_feature_flags{}))
 )
 
-func iocSnapCreate(f *os.File, out *btrfs_ioctl_vol_args) error {
-	return ioctl.Do(f, _BTRFS_IOC_SNAP_CREATE, out)
+func iocSnapCreate(f *os.File, in *btrfs_ioctl_vol_args) error {
+	return ioctl.Do(f, _BTRFS_IOC_SNAP_CREATE, in)
+}
+
+func iocSnapCreateV2(f *os.File, in *btrfs_ioctl_vol_args_v2) error {
+	return ioctl.Do(f, _BTRFS_IOC_SNAP_CREATE_V2, in)
 }
 
 func iocDefrag(f *os.File, out *btrfs_ioctl_vol_args) error {
@@ -586,12 +608,16 @@ func iocCloneRange(f *os.File, out *btrfs_ioctl_clone_range_args) error {
 	return ioctl.Do(f, _BTRFS_IOC_CLONE_RANGE, out)
 }
 
-func iocSubvolCreate(f *os.File, out *btrfs_ioctl_vol_args) error {
-	return ioctl.Do(f, _BTRFS_IOC_SUBVOL_CREATE, out)
+func iocSubvolCreate(f *os.File, in *btrfs_ioctl_vol_args) error {
+	return ioctl.Do(f, _BTRFS_IOC_SUBVOL_CREATE, in)
 }
 
-func iocSnapDestroy(f *os.File, out *btrfs_ioctl_vol_args) error {
-	return ioctl.Do(f, _BTRFS_IOC_SNAP_DESTROY, out)
+func iocSubvolCreateV2(f *os.File, in *btrfs_ioctl_vol_args_v2) error {
+	return ioctl.Do(f, _BTRFS_IOC_SUBVOL_CREATE, in)
+}
+
+func iocSnapDestroy(f *os.File, in *btrfs_ioctl_vol_args) error {
+	return ioctl.Do(f, _BTRFS_IOC_SNAP_DESTROY, in)
 }
 
 func iocDefragRange(f *os.File, out *btrfs_ioctl_defrag_range_args) error {
