@@ -19,9 +19,31 @@ const (
 	UUIDSize = 16
 )
 
+var zeroUUID UUID
+
 type UUID [UUIDSize]byte
 
-func (id UUID) String() string { return hex.EncodeToString(id[:]) }
+func (id UUID) String() string {
+	if id == zeroUUID {
+		return "<zero>"
+	}
+	buf := make([]byte, UUIDSize*2+4)
+	i := 0
+	i += hex.Encode(buf[i:], id[:4])
+	buf[i] = '-'
+	i++
+	i += hex.Encode(buf[i:], id[4:6])
+	buf[i] = '-'
+	i++
+	i += hex.Encode(buf[i:], id[6:8])
+	buf[i] = '-'
+	i++
+	i += hex.Encode(buf[i:], id[8:10])
+	buf[i] = '-'
+	i++
+	i += hex.Encode(buf[i:], id[10:])
+	return string(buf)
+}
 
 type FSID [FSIDSize]byte
 
@@ -121,7 +143,7 @@ type btrfs_ioctl_scrub_args struct {
 	flags    uint64               // in
 	progress btrfs_scrub_progress // out
 	// pad to 1k
-	unused [1024 - 4*8 - unsafe.Sizeof(btrfs_scrub_progress{})]byte
+	_ [1024 - 4*8 - unsafe.Sizeof(btrfs_scrub_progress{})]byte
 }
 
 type contReadingFromSrcdevMode uint64
@@ -168,7 +190,7 @@ type btrfs_ioctl_dev_replace_args_u2 struct {
 	cmd    uint64                                // in
 	result uint64                                // out
 	status btrfs_ioctl_dev_replace_status_params // out
-	unused [unsafe.Sizeof(btrfs_ioctl_dev_replace_start_params{}) - unsafe.Sizeof(btrfs_ioctl_dev_replace_status_params{})]byte
+	_      [unsafe.Sizeof(btrfs_ioctl_dev_replace_start_params{}) - unsafe.Sizeof(btrfs_ioctl_dev_replace_status_params{})]byte
 	spare  [64]uint64
 }
 
@@ -177,7 +199,7 @@ type btrfs_ioctl_dev_info_args struct {
 	uuid        UUID                    // in/out
 	bytes_used  uint64                  // out
 	total_bytes uint64                  // out
-	unused      [379]uint64             // pad to 4k
+	_           [379]uint64             // pad to 4k
 	path        [devicePathNameMax]byte // out
 }
 
@@ -188,7 +210,7 @@ type btrfs_ioctl_fs_info_args struct {
 	nodesize        uint32          // out
 	sectorsize      uint32          // out
 	clone_alignment uint32          // out
-	reserved        [122*8 + 4]byte // pad to 1k
+	_               [122*8 + 4]byte // pad to 1k
 }
 
 type btrfs_ioctl_feature_flags struct {
@@ -231,7 +253,7 @@ type btrfs_balance_args struct {
 	limit       argRange
 	stripes_min uint32
 	stripes_max uint32
-	unused      [48]byte
+	_           [48]byte
 }
 
 // report balance progress to userspace
@@ -250,13 +272,13 @@ const (
 )
 
 type btrfs_ioctl_balance_args struct {
-	flags  uint64                 // in/out
-	state  balanceState           // out
-	data   btrfs_balance_args     // in/out
-	meta   btrfs_balance_args     // in/out
-	sys    btrfs_balance_args     // in/out
-	stat   btrfs_balance_progress // out
-	unused [72 * 8]byte           // pad to 1k
+	flags uint64                 // in/out
+	state balanceState           // out
+	data  btrfs_balance_args     // in/out
+	meta  btrfs_balance_args     // in/out
+	sys   btrfs_balance_args     // in/out
+	stat  btrfs_balance_progress // out
+	_     [72 * 8]byte           // pad to 1k
 }
 
 const _BTRFS_INO_LOOKUP_PATH_MAX = 4080
@@ -283,7 +305,7 @@ type btrfs_ioctl_search_key struct {
 	max_type uint32
 	// how many items did userland ask for, and how many are we returning
 	nr_items uint32
-	unused   [36]byte
+	_        [36]byte
 }
 
 type btrfs_ioctl_search_header struct {
@@ -347,7 +369,7 @@ type btrfs_ioctl_same_args struct {
 	logical_offset uint64 // in - start of extent in source
 	length         uint64 // in - length of extent
 	dest_count     uint16 // in - total elements in info array
-	reserved       [6]byte
+	_              [6]byte
 	//info           [0]btrfs_ioctl_same_extent_info
 }
 
@@ -364,7 +386,7 @@ type btrfs_ioctl_defrag_range_args struct {
 	// which compression method to use if turning on compression
 	// for this defrag operation.  If unspecified, zlib will be used
 	compress_type uint32
-	unused        [16]byte // spare for later
+	_             [16]byte // spare for later
 }
 
 type btrfs_ioctl_space_info struct {
@@ -388,17 +410,17 @@ type btrfs_data_container struct {
 }
 
 type btrfs_ioctl_ino_path_args struct {
-	inum     uint64 // in
-	size     uint64 // in
-	reserved [32]byte
+	inum uint64 // in
+	size uint64 // in
+	_    [32]byte
 	// struct btrfs_data_container	*fspath;	   out
 	fspath uint64 // out
 }
 
 type btrfs_ioctl_logical_ino_args struct {
-	logical  uint64 // in
-	size     uint64 // in
-	reserved [32]byte
+	logical uint64 // in
+	size    uint64 // in
+	_       [32]byte
 	// struct btrfs_data_container	*inodes;	out
 	inodes uint64
 }
@@ -428,7 +450,7 @@ type btrfs_ioctl_get_dev_stats struct {
 	nr_items uint64                                       // in/out
 	flags    uint64                                       // in/out
 	values   [_BTRFS_DEV_STAT_VALUES_MAX]uint64           // out values
-	unused   [128 - 2 - _BTRFS_DEV_STAT_VALUES_MAX]uint64 // pad to 1k
+	_        [128 - 2 - _BTRFS_DEV_STAT_VALUES_MAX]uint64 // pad to 1k
 }
 
 const (
@@ -445,7 +467,7 @@ type btrfs_ioctl_quota_ctl_args struct {
 type btrfs_ioctl_quota_rescan_args struct {
 	flags    uint64
 	progress uint64
-	reserved [6]uint64
+	_        [6]uint64
 }
 
 type btrfs_ioctl_qgroup_assign_args struct {
@@ -471,7 +493,7 @@ type btrfs_ioctl_received_subvol_args struct {
 	stime    btrfs_ioctl_timespec // in
 	rtime    btrfs_ioctl_timespec // out
 	flags    uint64               // in
-	reserved [16]uint64           // in
+	_        [16]uint64           // in
 }
 
 const (
@@ -498,7 +520,7 @@ type btrfs_ioctl_send_args struct {
 	clone_sources       *uint64   // in
 	parent_root         uint64    // in
 	flags               uint64    // in
-	reserved            [4]uint64 // in
+	_                   [4]uint64 // in
 }
 
 var (

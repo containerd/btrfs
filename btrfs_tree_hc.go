@@ -44,37 +44,37 @@ const (
 	devStatsObjectid = 0
 
 	// For storing balance parameters in the root tree
-	balanceObjectid = 0xfffffffffffffffc /* -4 */
+	balanceObjectid = (1<<64 - 4)
 
 	// Orhpan objectid for tracking unlinked/truncated files
-	orphanObjectid = 0xfffffffffffffffb /* -5 */
+	orphanObjectid = (1<<64 - 5)
 
 	// Does write ahead logging to speed up fsyncs
-	treeLogObjectid      = 0xfffffffffffffffa /* -6 */
-	treeLogFixupObjectid = 0xfffffffffffffff9 /* -7 */
+	treeLogObjectid      = (1<<64 - 6)
+	treeLogFixupObjectid = (1<<64 - 7)
 
 	// For space balancing
-	treeRelocObjectid     = 0xfffffffffffffff8 /* -8 */
-	dataRelocTreeObjectid = 0xfffffffffffffff7 /* -9 */
+	treeRelocObjectid     = (1<<64 - 8)
+	dataRelocTreeObjectid = (1<<64 - 9)
 
 	// Extent checksums all have this objectid
 	// this allows them to share the logging tree
 	// for fsyncs
-	extentCsumObjectid = 0xfffffffffffffff6 /* -10 */
+	extentCsumObjectid = (1<<64 - 10)
 
 	// For storing free space cache
-	freeSpaceObjectid = 0xfffffffffffffff5 /* -11 */
+	freeSpaceObjectid = (1<<64 - 11)
 
 	// The inode number assigned to the special inode for storing
 	// free ino cache
-	freeInoObjectid = 0xfffffffffffffff4 /* -12 */
+	freeInoObjectid = (1<<64 - 12)
 
 	// Dummy objectid represents multiple objectids
-	multipleObjectids = 0xffffffffffffff01 /* -255 */
+	multipleObjectids = (1<<64 - 255)
 
 	// All files have objectids in this range.
 	firstFreeObjectid      = 256
-	lastFreeObjectid       = 0xffffffffffffff00 /* -256 */
+	lastFreeObjectid       = (1<<64 - 256)
 	firstChunkTreeObjectid = 256
 
 	// The device items go into the chunk tree. The key is in the form
@@ -134,6 +134,8 @@ const (
 	treeBlockRefKey = 176
 
 	extentDataRefKey = 178
+
+	extentRefV0Key = 180
 
 	sharedBlockRefKey = 182
 
@@ -221,6 +223,7 @@ const (
 	csumSize = 32
 
 	// Csum types
+	csumTypeCrc32 = 0
 
 	// Flags definitions for directory entry item type
 	// Used by:
@@ -437,7 +440,12 @@ const (
 	blockGroupData     = (1 << 0)
 	blockGroupSystem   = (1 << 1)
 	blockGroupMetadata = (1 << 2)
+	blockGroupRaid0    = (1 << 3)
+	blockGroupRaid1    = (1 << 4)
 	blockGroupDup      = (1 << 5)
+	blockGroupRaid10   = (1 << 6)
+	blockGroupRaid5    = (1 << 7)
+	blockGroupRaid6    = (1 << 8)
 
 	// We need a bit for restriper to be able to tell when chunks of type
 	// SINGLE are available. This "extended" profile format is used in

@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"unicode"
 )
@@ -23,7 +22,7 @@ var (
 )
 
 var (
-	reDefineIntConst = regexp.MustCompile(`#define\s+([A-Za-z_]+)\s+(\(?-?\d+(?:U?LL)?(?:\s*<<\s*\d+)?\)?)`)
+	reDefineIntConst = regexp.MustCompile(`#define\s+([A-Za-z_][A-Za-z\d_]*)\s+(\(?-?\d+(?:U?LL)?(?:\s*<<\s*\d+)?\)?)`)
 	reNegULL         = regexp.MustCompile(`-(\d+)ULL`)
 )
 
@@ -126,11 +125,7 @@ func process(w io.Writer, path string) error {
 				name, val := sub[1], sub[2]
 				if sub := reNegULL.FindAllStringSubmatch(val, -1); len(sub) > 0 {
 					for _, s := range sub {
-						v, err := strconv.ParseInt(s[1], 10, 64)
-						if err != nil {
-							panic(err)
-						}
-						val = strings.Replace(val, s[0], fmt.Sprintf("0x%x /* -%s */", uint64(-v), s[1]), -1)
+						val = strings.Replace(val, s[0], fmt.Sprintf("(1<<64 - %s)", s[1]), -1)
 					}
 				}
 				val = strings.Replace(val, "ULL", "", -1)

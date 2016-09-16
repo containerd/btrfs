@@ -2,6 +2,8 @@ package btrfs
 
 import "strings"
 
+const maxUint64 = 1<<64 - 1
+
 const BTRFS_LABEL_SIZE = 256
 
 type FeatureFlags uint64

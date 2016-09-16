@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 )
 
 func checkSubVolumeName(name string) bool {
@@ -119,11 +120,13 @@ func SnapshotSubVolume(subvol, dst string, ro bool) error {
 	if err != nil {
 		return err
 	}
+	defer fdst.Close()
 	// TODO: make SnapshotSubVolume a method on FS to use existing fd
 	f, err := openDir(subvol)
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 	args := btrfs_ioctl_vol_args_v2{
 		fd: int64(f.Fd()),
 	}
@@ -138,4 +141,123 @@ func SnapshotSubVolume(subvol, dst string, ro bool) error {
 	//}
 	copy(args.name[:], newName)
 	return iocSnapCreateV2(fdst, &args)
+}
+
+func ListSubVolumes(path string) ([]Subvolume, error) {
+	f, err := openDir(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	//root, err := getPathRootID(f)
+	//if err != nil {
+	//	return nil, fmt.Errorf("can't get rootid for '%s': %v", path, err)
+	//}
+	m, err := listSubVolumes(f)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Subvolume, 0, len(m))
+	for _, v := range m {
+		out = append(out, v)
+	}
+	return out, nil
+}
+
+type Subvolume struct {
+	ObjectID     uint64
+	TransID      uint64
+	Name         string
+	RefTree      uint64
+	DirID        uint64
+	Gen          uint64
+	OGen         uint64
+	Flags        uint64
+	UUID         UUID
+	ParentUUID   UUID
+	ReceivedUUID UUID
+	OTime        time.Time
+	CTime        time.Time
+}
+
+func listSubVolumes(f *os.File) (map[uint64]Subvolume, error) {
+	sk := btrfs_ioctl_search_key{
+		// search in the tree of tree roots
+		tree_id: 1,
+
+		// Set the min and max to backref keys. The search will
+		// only send back this type of key now.
+		min_type: rootBackrefKey,
+		max_type: rootBackrefKey,
+
+		min_objectid: firstFreeObjectid,
+
+		// Set all the other params to the max, we'll take any objectid
+		// and any trans.
+		max_objectid: lastFreeObjectid,
+		max_offset:   maxUint64,
+		max_transid:  maxUint64,
+
+		nr_items: 4096, // just a big number, doesn't matter much
+	}
+	m := make(map[uint64]Subvolume)
+	for {
+		out, err := treeSearchRaw(f, sk)
+		if err != nil {
+			return nil, err
+		} else if len(out) == 0 {
+			break
+		}
+		for _, obj := range out {
+			switch obj.Type {
+			case rootBackrefKey:
+				ref := asRootRef(obj.Data)
+				o := m[obj.ObjectID]
+				o.TransID = obj.TransID
+				o.ObjectID = obj.ObjectID
+				o.RefTree = obj.Offset
+				o.DirID = ref.DirID
+				o.Name = ref.Name
+				m[obj.ObjectID] = o
+			case rootItemKey:
+				o := m[obj.ObjectID]
+				o.TransID = obj.TransID
+				o.ObjectID = obj.ObjectID
+				// TODO: decode whole object?
+				o.Gen = asUint64(obj.Data[160:]) // size of btrfs_inode_item
+				o.Flags = asUint64(obj.Data[160+6*8:])
+				const sz = 439
+				const toff = sz - 8*8 - 4*12
+				o.CTime = asTime(obj.Data[toff+0*12:])
+				o.OTime = asTime(obj.Data[toff+1*12:])
+				o.OGen = asUint64(obj.Data[toff-3*8:])
+				const uoff = toff - 4*8 - 3*UUIDSize
+				copy(o.UUID[:], obj.Data[uoff+0*UUIDSize:])
+				copy(o.ParentUUID[:], obj.Data[uoff+1*UUIDSize:])
+				copy(o.ReceivedUUID[:], obj.Data[uoff+2*UUIDSize:])
+				m[obj.ObjectID] = o
+			}
+		}
+		// record the mins in key so we can make sure the
+		// next search doesn't repeat this root
+		last := out[len(out)-1]
+		sk.min_objectid = last.ObjectID
+		sk.min_type = last.Type
+		sk.min_offset = last.Offset + 1
+		if sk.min_offset == 0 { // overflow
+			sk.min_type++
+		} else {
+			continue
+		}
+		if sk.min_type > rootBackrefKey {
+			sk.min_type = rootItemKey
+			sk.min_objectid++
+		} else {
+			continue
+		}
+		if sk.min_objectid > sk.max_objectid {
+			break
+		}
+	}
+	return m, nil
 }

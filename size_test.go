@@ -47,6 +47,10 @@ var caseSizes = []struct {
 	{obj: btrfs_ioctl_timespec{}, size: 16},
 	{obj: btrfs_ioctl_received_subvol_args{}, size: 200},
 	{obj: btrfs_ioctl_send_args{}, size: 72},
+
+	//{obj:btrfs_root_ref{},size:18},
+	//{obj:btrfs_root_item{},size:439},
+	//{obj:btrfs_inode_item{},size:160},
 }
 
 func TestSizes(t *testing.T) {

@@ -17,6 +17,7 @@ func init() {
 	SubvolumeCmd.AddCommand(
 		SubvolumeCreateCmd,
 		SubvolumeDeleteCmd,
+		SubvolumeListCmd,
 	)
 }
 
@@ -59,6 +60,23 @@ operation is safely stored on the media.`,
 			}
 		}
 		return nil
+	},
+}
+
+var SubvolumeListCmd = &cobra.Command{
+	Use:   "list <mount>",
+	Short: "List subvolumes",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) != 1 {
+			return fmt.Errorf("expected one destination argument")
+		}
+		list, err := btrfs.ListSubVolumes(args[0])
+		if err == nil {
+			for _, v := range list {
+				fmt.Printf("%+v\n", v)
+			}
+		}
+		return err
 	},
 }
 

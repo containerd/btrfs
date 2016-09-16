@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"syscall"
+	"unsafe"
 )
 
 func isBtrfs(path string) (bool, error) {
@@ -34,4 +35,36 @@ func openDir(path string) (*os.File, error) {
 		return nil, fmt.Errorf("not a directory: %s", path)
 	}
 	return file, nil
+}
+
+type rawItem struct {
+	TransID  uint64
+	ObjectID uint64
+	Type     uint32
+	Offset   uint64
+	Data     []byte
+}
+
+func treeSearchRaw(f *os.File, key btrfs_ioctl_search_key) (out []rawItem, _ error) {
+	args := btrfs_ioctl_search_args{
+		key: key,
+	}
+	if err := iocTreeSearch(f, &args); err != nil {
+		return nil, err
+	}
+	out = make([]rawItem, 0, args.key.nr_items)
+	buf := args.buf[:]
+	for i := 0; i < int(args.key.nr_items); i++ {
+		h := (*btrfs_ioctl_search_header)(unsafe.Pointer(&buf[0]))
+		buf = buf[unsafe.Sizeof(btrfs_ioctl_search_header{}):]
+		out = append(out, rawItem{
+			TransID:  h.transid,
+			ObjectID: h.objectid,
+			Type:     h.typ,
+			Offset:   h.offset,
+			Data:     buf[:h.len], // TODO: reallocate?
+		})
+		buf = buf[h.len:]
+	}
+	return out, nil
 }
