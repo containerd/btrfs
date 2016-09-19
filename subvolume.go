@@ -131,7 +131,7 @@ func SnapshotSubVolume(subvol, dst string, ro bool) error {
 		fd: int64(f.Fd()),
 	}
 	if ro {
-		args.flags |= subvolReadOnly
+		args.flags |= SubvolReadOnly
 	}
 	// TODO
 	//if inherit != nil {

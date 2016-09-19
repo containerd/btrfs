@@ -1,8 +1,12 @@
 package btrfs
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"unsafe"
 )
@@ -13,6 +17,76 @@ func isBtrfs(path string) (bool, error) {
 		return false, err
 	}
 	return stfs.Type == SuperMagic, nil
+}
+
+func IsReadOnly(path string) (bool, error) {
+	fs, err := Open(path, true)
+	if err != nil {
+		return false, err
+	}
+	defer fs.Close()
+	f, err := fs.GetFlags()
+	if err != nil {
+		return false, err
+	}
+	return f.ReadOnly(), nil
+}
+
+type mountPoint struct {
+	Dev   string
+	Mount string
+	Type  string
+	Opts  string
+}
+
+func getMounts() ([]mountPoint, error) {
+	file, err := os.Open("/etc/mtab")
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	r := bufio.NewReader(file)
+	var out []mountPoint
+	for {
+		line, err := r.ReadString('\n')
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+		fields := strings.Fields(line)
+		out = append(out, mountPoint{
+			Dev:   fields[0],
+			Mount: fields[1],
+			Type:  fields[2],
+			Opts:  fields[3],
+		})
+	}
+	return out, nil
+}
+
+func findMountRoot(path string) (string, error) {
+	mounts, err := getMounts()
+	if err != nil {
+		return "", err
+	}
+	longest := ""
+	isBtrfs := false
+	for _, m := range mounts {
+		if !strings.HasPrefix(path, m.Mount) {
+			continue
+		}
+		if len(longest) < len(m.Mount) {
+			longest = m.Mount
+			isBtrfs = m.Type == "btrfs"
+		}
+	}
+	if longest == "" {
+		return "", os.ErrNotExist
+	} else if !isBtrfs {
+		return "", ErrNotBtrfs{Path: longest}
+	}
+	return filepath.Abs(longest)
 }
 
 // openDir does the following checks before calling Open:

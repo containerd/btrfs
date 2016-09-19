@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"github.com/dennwc/btrfs/ioctl"
 	"os"
+	"strconv"
+	"strings"
 	"unsafe"
 )
 
@@ -86,7 +88,25 @@ type btrfs_ioctl_vol_args_v2_u1 struct {
 
 const subvolNameMax = 4039
 
-type subvolFlags uint64
+type SubvolFlags uint64
+
+func (f SubvolFlags) ReadOnly() bool {
+	return f&SubvolReadOnly != 0
+}
+func (f SubvolFlags) String() string {
+	if f == 0 {
+		return "<nil>"
+	}
+	var out []string
+	if f&SubvolReadOnly != 0 {
+		out = append(out, "RO")
+		f = f & (^SubvolReadOnly)
+	}
+	if f != 0 {
+		out = append(out, "0x"+strconv.FormatInt(int64(f), 16))
+	}
+	return strings.Join(out, "|")
+}
 
 // flags for subvolumes
 //
@@ -97,15 +117,15 @@ type subvolFlags uint64
 // - BTRFS_IOC_SUBVOL_GETFLAGS
 // - BTRFS_IOC_SUBVOL_SETFLAGS
 const (
-	subvolCreateAsync   = subvolFlags(1 << 0)
-	subvolReadOnly      = subvolFlags(1 << 1)
-	subvolQGroupInherit = subvolFlags(1 << 2)
+	subvolCreateAsync   = SubvolFlags(1 << 0)
+	SubvolReadOnly      = SubvolFlags(1 << 1)
+	subvolQGroupInherit = SubvolFlags(1 << 2)
 )
 
 type btrfs_ioctl_vol_args_v2 struct {
 	fd      int64
 	transid uint64
-	flags   subvolFlags
+	flags   SubvolFlags
 	btrfs_ioctl_vol_args_v2_u1
 	unused [2]uint64
 	name   [subvolNameMax + 1]byte
@@ -670,8 +690,9 @@ func iocWaitSync(f *os.File, out *uint64) error {
 	return ioctl.Do(f, _BTRFS_IOC_WAIT_SYNC, out)
 }
 
-func iocSubvolGetflags(f *os.File, out *uint64) error {
-	return ioctl.Do(f, _BTRFS_IOC_SUBVOL_GETFLAGS, out)
+func iocSubvolGetflags(f *os.File) (out SubvolFlags, err error) {
+	err = ioctl.Do(f, _BTRFS_IOC_SUBVOL_GETFLAGS, &out)
+	return
 }
 
 func iocSubvolSetflags(f *os.File, out *uint64) error {
@@ -714,8 +735,8 @@ func iocSetReceivedSubvol(f *os.File, out *btrfs_ioctl_received_subvol_args) err
 	return ioctl.Do(f, _BTRFS_IOC_SET_RECEIVED_SUBVOL, out)
 }
 
-func iocSend(f *os.File, out *btrfs_ioctl_send_args) error {
-	return ioctl.Do(f, _BTRFS_IOC_SEND, out)
+func iocSend(f *os.File, in *btrfs_ioctl_send_args) error {
+	return ioctl.Do(f, _BTRFS_IOC_SEND, in)
 }
 
 func iocDevicesReady(f *os.File, out *btrfs_ioctl_vol_args) error {

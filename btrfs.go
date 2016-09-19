@@ -6,17 +6,26 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"syscall"
 )
 
 const SuperMagic = 0x9123683E
 
-func Open(path string) (*FS, error) {
+func Open(path string, ro bool) (*FS, error) {
 	if ok, err := IsSubVolume(path); err != nil {
 		return nil, err
 	} else if !ok {
 		return nil, ErrNotBtrfs{Path: path}
 	}
-	dir, err := os.Open(path)
+	var (
+		dir *os.File
+		err error
+	)
+	if ro {
+		dir, err = os.OpenFile(path, os.O_RDONLY|syscall.O_NOATIME, 0644)
+	} else {
+		dir, err = os.Open(path)
+	}
 	if err != nil {
 		return nil, err
 	} else if st, err := dir.Stat(); err != nil {
@@ -137,6 +146,10 @@ func (f *FS) GetSupportedFeatures() (out FSFeatureFlags, err error) {
 	//	}
 	//}
 	return
+}
+
+func (f *FS) GetFlags() (SubvolFlags, error) {
+	return iocSubvolGetflags(f.f)
 }
 
 func (f *FS) Sync() (err error) {

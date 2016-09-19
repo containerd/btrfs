@@ -19,6 +19,8 @@ func init() {
 		SubvolumeDeleteCmd,
 		SubvolumeListCmd,
 	)
+
+	SendCmd.Flags().StringP("parent", "p", "", "Send an incremental stream from <parent> to <subvol>.")
 }
 
 var RootCmd = &cobra.Command{
@@ -27,7 +29,8 @@ var RootCmd = &cobra.Command{
 }
 
 var SubvolumeCmd = &cobra.Command{
-	Use: "subvolume <command> <args>",
+	Use:     "subvolume <command> <args>",
+	Aliases: []string{"subvol", "sub", "sv"},
 }
 
 var SubvolumeCreateCmd = &cobra.Command{
@@ -64,8 +67,9 @@ operation is safely stored on the media.`,
 }
 
 var SubvolumeListCmd = &cobra.Command{
-	Use:   "list <mount>",
-	Short: "List subvolumes",
+	Use:     "list <mount>",
+	Short:   "List subvolumes",
+	Aliases: []string{"ls"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if len(args) != 1 {
 			return fmt.Errorf("expected one destination argument")
@@ -81,12 +85,13 @@ var SubvolumeListCmd = &cobra.Command{
 }
 
 var SendCmd = &cobra.Command{
-	Use:   "send [-ve] [-p <parent>] [-c <clone-src>] [-f <outfile>] <subvol> [<subvol>...]",
+	Use:   "send [-v] [-p <parent>] [-c <clone-src>] [-f <outfile>] <subvol> [<subvol>...]",
 	Short: "Send the subvolume(s) to stdout.",
 	Long: `Sends the subvolume(s) specified by <subvol> to stdout.
 <subvol> should be read-only here.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return btrfs.Send(os.Stdout, "", args...)
+		parent, _ := cmd.Flags().GetString("parent")
+		return btrfs.Send(os.Stdout, parent, args...)
 	},
 }
 
