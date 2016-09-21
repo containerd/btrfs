@@ -96,7 +96,7 @@ var SendCmd = &cobra.Command{
 }
 
 var ReceiveCmd = &cobra.Command{
-	Use:   "receive [-ve] [-f <infile>] [--max-errors <N>] <mount>",
+	Use:   "receive [-v] [-f <infile>] [--max-errors <N>] <mount>",
 	Short: "Receive subvolumes from stdin.",
 	Long: `Receives one or more subvolumes that were previously
 sent with btrfs send. The received subvolumes are stored

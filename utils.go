@@ -14,7 +14,7 @@ import (
 func isBtrfs(path string) (bool, error) {
 	var stfs syscall.Statfs_t
 	if err := syscall.Statfs(path, &stfs); err != nil {
-		return false, err
+		return false, &os.PathError{Op: "statfs", Path: path, Err: err}
 	}
 	return stfs.Type == SuperMagic, nil
 }

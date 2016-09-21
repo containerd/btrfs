@@ -17,7 +17,7 @@ func checkSubVolumeName(name string) bool {
 func IsSubVolume(path string) (bool, error) {
 	var st syscall.Stat_t
 	if err := syscall.Stat(path, &st); err != nil {
-		return false, err
+		return false, &os.PathError{Op: "stat", Path: path, Err: err}
 	}
 	if st.Ino != firstFreeObjectid ||
 		st.Mode&syscall.S_IFMT != syscall.S_IFDIR {
@@ -124,7 +124,7 @@ func SnapshotSubVolume(subvol, dst string, ro bool) error {
 	// TODO: make SnapshotSubVolume a method on FS to use existing fd
 	f, err := openDir(subvol)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot open dest dir: %v", err)
 	}
 	defer f.Close()
 	args := btrfs_ioctl_vol_args_v2{
@@ -140,7 +140,10 @@ func SnapshotSubVolume(subvol, dst string, ro bool) error {
 	//	args.qgroup_inherit = inherit
 	//}
 	copy(args.name[:], newName)
-	return iocSnapCreateV2(fdst, &args)
+	if err := iocSnapCreateV2(fdst, &args); err != nil {
+		return fmt.Errorf("ioc failed: %v", err)
+	}
+	return nil
 }
 
 func ListSubVolumes(path string) ([]Subvolume, error) {
