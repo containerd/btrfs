@@ -11,6 +11,8 @@ import (
 
 const SuperMagic = 0x9123683E
 
+const xattrPrefix = "btrfs."
+
 func Open(path string, ro bool) (*FS, error) {
 	if ok, err := IsSubVolume(path); err != nil {
 		return nil, err
@@ -152,6 +154,10 @@ func (f *FS) GetFlags() (SubvolFlags, error) {
 	return iocSubvolGetflags(f.f)
 }
 
+func (f *FS) SetFlags(flags SubvolFlags) error {
+	return iocSubvolSetflags(f.f, flags)
+}
+
 func (f *FS) Sync() (err error) {
 	if err = ioctl.Do(f.f, _BTRFS_IOC_START_SYNC, nil); err != nil {
 		return
@@ -193,4 +199,28 @@ func (f *FS) Receive(r io.Reader) error {
 
 func (f *FS) ReceiveTo(r io.Reader, mount string) error {
 	return Receive(r, filepath.Join(f.f.Name(), mount))
+}
+
+type Compression string
+
+const (
+	CompressionNone = Compression("")
+	LZO             = Compression("lzo")
+	ZLIB            = Compression("zlib")
+)
+
+func SetCompression(path string, v Compression) error {
+	var value []byte
+	if v != CompressionNone {
+		var err error
+		value, err = syscall.ByteSliceFromString(string(v))
+		if err != nil {
+			return err
+		}
+	}
+	err := syscall.Setxattr(path, xattrPrefix+"compression", value, 0)
+	if err != nil {
+		return &os.PathError{Op: "setxattr", Path: path, Err: err}
+	}
+	return nil
 }

@@ -695,8 +695,9 @@ func iocSubvolGetflags(f *os.File) (out SubvolFlags, err error) {
 	return
 }
 
-func iocSubvolSetflags(f *os.File, out *uint64) error {
-	return ioctl.Do(f, _BTRFS_IOC_SUBVOL_SETFLAGS, out)
+func iocSubvolSetflags(f *os.File, flags SubvolFlags) error {
+	v := uint64(flags)
+	return ioctl.Do(f, _BTRFS_IOC_SUBVOL_SETFLAGS, &v)
 }
 
 func iocScrub(f *os.File, out *btrfs_ioctl_scrub_args) error {
