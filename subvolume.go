@@ -146,27 +146,6 @@ func SnapshotSubVolume(subvol, dst string, ro bool) error {
 	return nil
 }
 
-func ListSubVolumes(path string) ([]Subvolume, error) {
-	f, err := openDir(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	//root, err := getPathRootID(f)
-	//if err != nil {
-	//	return nil, fmt.Errorf("can't get rootid for '%s': %v", path, err)
-	//}
-	m, err := listSubVolumes(f)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]Subvolume, 0, len(m))
-	for _, v := range m {
-		out = append(out, v)
-	}
-	return out, nil
-}
-
 type Subvolume struct {
 	ObjectID     uint64
 	TransID      uint64

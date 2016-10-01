@@ -201,6 +201,25 @@ func (f *FS) ReceiveTo(r io.Reader, mount string) error {
 	return Receive(r, filepath.Join(f.f.Name(), mount))
 }
 
+func (f *FS) ListSubvolumes(filter func(Subvolume) bool) ([]Subvolume, error) {
+	//root, err := getPathRootID(f)
+	//if err != nil {
+	//	return nil, fmt.Errorf("can't get rootid for '%s': %v", path, err)
+	//}
+	m, err := listSubVolumes(f.f)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Subvolume, 0, len(m))
+	for _, v := range m {
+		if filter != nil && !filter(v) {
+			continue
+		}
+		out = append(out, v)
+	}
+	return out, nil
+}
+
 type Compression string
 
 const (

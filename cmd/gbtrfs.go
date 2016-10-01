@@ -74,7 +74,12 @@ var SubvolumeListCmd = &cobra.Command{
 		if len(args) != 1 {
 			return fmt.Errorf("expected one destination argument")
 		}
-		list, err := btrfs.ListSubVolumes(args[0])
+		fs, err := btrfs.Open(args[0], true)
+		if err != nil {
+			return err
+		}
+		defer fs.Close()
+		list, err := fs.ListSubvolumes(nil)
 		if err == nil {
 			for _, v := range list {
 				fmt.Printf("%+v\n", v)
