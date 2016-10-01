@@ -84,6 +84,7 @@ func Send(w io.Writer, parent string, subvols ...string) error {
 			flags |= _BTRFS_SEND_FLAG_OMIT_END_CMD
 		}
 		err = send(w, fs.f, parentID, cloneSrc, flags)
+		fs.Close()
 		if err != nil {
 			return fmt.Errorf("error sending %s: %v", sub, err)
 		}
