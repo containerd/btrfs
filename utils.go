@@ -1,9 +1,8 @@
 package btrfs
 
 import (
-	"bufio"
 	"fmt"
-	"io"
+	"github.com/dennwc/btrfs/mtab"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,41 +31,8 @@ func IsReadOnly(path string) (bool, error) {
 	return f.ReadOnly(), nil
 }
 
-type mountPoint struct {
-	Dev   string
-	Mount string
-	Type  string
-	Opts  string
-}
-
-func getMounts() ([]mountPoint, error) {
-	file, err := os.Open("/etc/mtab")
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	r := bufio.NewReader(file)
-	var out []mountPoint
-	for {
-		line, err := r.ReadString('\n')
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return nil, err
-		}
-		fields := strings.Fields(line)
-		out = append(out, mountPoint{
-			Dev:   fields[0],
-			Mount: fields[1],
-			Type:  fields[2],
-			Opts:  fields[3],
-		})
-	}
-	return out, nil
-}
-
 func findMountRoot(path string) (string, error) {
-	mounts, err := getMounts()
+	mounts, err := mtab.Mounts()
 	if err != nil {
 		return "", err
 	}
