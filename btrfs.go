@@ -1,6 +1,7 @@
 package btrfs
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/dennwc/btrfs/ioctl"
 	"io"
@@ -228,6 +229,8 @@ const (
 	ZLIB            = Compression("zlib")
 )
 
+const xattrCompression = xattrPrefix + "compression"
+
 func SetCompression(path string, v Compression) error {
 	var value []byte
 	if v != CompressionNone {
@@ -237,9 +240,39 @@ func SetCompression(path string, v Compression) error {
 			return err
 		}
 	}
-	err := syscall.Setxattr(path, xattrPrefix+"compression", value, 0)
+	err := syscall.Setxattr(path, xattrCompression, value, 0)
 	if err != nil {
 		return &os.PathError{Op: "setxattr", Path: path, Err: err}
 	}
 	return nil
+}
+
+func GetCompression(path string) (Compression, error) {
+	var buf []byte
+	for {
+		sz, err := syscall.Getxattr(path, xattrCompression, nil)
+		if err == syscall.ENODATA || sz == 0 {
+			return CompressionNone, nil
+		} else if err != nil {
+			return CompressionNone, &os.PathError{Op: "getxattr", Path: path, Err: err}
+		}
+		if cap(buf) < sz {
+			buf = make([]byte, sz)
+		} else {
+			buf = buf[:sz]
+		}
+		sz, err = syscall.Getxattr(path, xattrCompression, buf)
+		if err == syscall.ENODATA {
+			return CompressionNone, nil
+		} else if err == syscall.ERANGE {
+			// xattr changed by someone else, and is larger than our current buffer
+			continue
+		} else if err != nil {
+			return CompressionNone, &os.PathError{Op: "getxattr", Path: path, Err: err}
+		}
+		buf = buf[:sz]
+		break
+	}
+	buf = bytes.TrimSuffix(buf, []byte{0})
+	return Compression(buf), nil
 }
