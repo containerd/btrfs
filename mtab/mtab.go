@@ -1,3 +1,4 @@
+// Package mtab contains tools to work with /etc/mtab file.
 package mtab
 
 import (
