@@ -678,8 +678,49 @@ func iocDefaultSubvol(f *os.File, out *uint64) error {
 	return ioctl.Do(f, _BTRFS_IOC_DEFAULT_SUBVOL, out)
 }
 
-func iocSpaceInfo(f *os.File, out *btrfs_ioctl_space_args) error {
-	return ioctl.Do(f, _BTRFS_IOC_SPACE_INFO, out)
+type spaceInfo struct {
+	Flags      uint64
+	TotalBytes uint64
+	UsedBytes  uint64
+}
+
+func iocSpaceInfo(f *os.File) ([]spaceInfo, error) {
+	arg := &btrfs_ioctl_space_args{}
+	if err := ioctl.Do(f, _BTRFS_IOC_SPACE_INFO, arg); err != nil {
+		return nil, err
+	}
+	n := arg.total_spaces
+	if n == 0 {
+		return nil, nil
+	}
+	const (
+		argSize  = unsafe.Sizeof(btrfs_ioctl_space_args{})
+		infoSize = unsafe.Sizeof(btrfs_ioctl_space_info{})
+	)
+	buf := make([]byte, argSize+uintptr(n)*infoSize)
+	basePtr := unsafe.Pointer(&buf[0])
+	arg = (*btrfs_ioctl_space_args)(basePtr)
+	arg.space_slots = n
+	if err := ioctl.Do(f, _BTRFS_IOC_SPACE_INFO, arg); err != nil {
+		return nil, err
+	} else if arg.total_spaces == 0 {
+		return nil, nil
+	}
+	if n > arg.total_spaces {
+		n = arg.total_spaces
+	}
+	out := make([]spaceInfo, n)
+	ptr := uintptr(basePtr) + argSize
+	for i := 0; i < int(n); i++ {
+		info := (*btrfs_ioctl_space_info)(unsafe.Pointer(ptr))
+		out[i] = spaceInfo{
+			Flags:      info.flags,
+			TotalBytes: info.total_bytes,
+			UsedBytes:  info.used_bytes,
+		}
+		ptr += infoSize
+	}
+	return out, nil
 }
 
 func iocStartSync(f *os.File, out *uint64) error {
@@ -712,8 +753,16 @@ func iocScrubProgress(f *os.File, out *btrfs_ioctl_scrub_args) error {
 	return ioctl.Do(f, _BTRFS_IOC_SCRUB_PROGRESS, out)
 }
 
-func iocDevInfo(f *os.File, out *btrfs_ioctl_dev_info_args) error {
-	return ioctl.Do(f, _BTRFS_IOC_DEV_INFO, out)
+func iocFsInfo(f *os.File) (out btrfs_ioctl_fs_info_args, err error) {
+	err = ioctl.Do(f, _BTRFS_IOC_FS_INFO, &out)
+	return
+}
+
+func iocDevInfo(f *os.File, devid uint64, uuid UUID) (out btrfs_ioctl_dev_info_args, err error) {
+	out.devid = devid
+	out.uuid = uuid
+	err = ioctl.Do(f, _BTRFS_IOC_DEV_INFO, &out)
+	return
 }
 
 func iocBalanceCtl(f *os.File, out *int32) error {

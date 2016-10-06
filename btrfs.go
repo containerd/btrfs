@@ -1,7 +1,6 @@
 package btrfs
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/dennwc/btrfs/ioctl"
 	"io"
@@ -11,8 +10,6 @@ import (
 )
 
 const SuperMagic = 0x9123683E
-
-const xattrPrefix = "btrfs."
 
 func Open(path string, ro bool) (*FS, error) {
 	if ok, err := IsSubVolume(path); err != nil {
@@ -60,16 +57,16 @@ type Info struct {
 
 func (f *FS) Info() (out Info, err error) {
 	var arg btrfs_ioctl_fs_info_args
-	if err = ioctl.Do(f.f, _BTRFS_IOC_FS_INFO, &arg); err != nil {
-		return
-	}
-	out = Info{
-		MaxID:          arg.max_id,
-		NumDevices:     arg.num_devices,
-		FSID:           arg.fsid,
-		NodeSize:       arg.nodesize,
-		SectorSize:     arg.sectorsize,
-		CloneAlignment: arg.clone_alignment,
+	arg, err = iocFsInfo(f.f)
+	if err == nil {
+		out = Info{
+			MaxID:          arg.max_id,
+			NumDevices:     arg.num_devices,
+			FSID:           arg.fsid,
+			NodeSize:       arg.nodesize,
+			SectorSize:     arg.sectorsize,
+			CloneAlignment: arg.clone_alignment,
+		}
 	}
 	return
 }
@@ -160,10 +157,10 @@ func (f *FS) SetFlags(flags SubvolFlags) error {
 }
 
 func (f *FS) Sync() (err error) {
-	if err = ioctl.Do(f.f, _BTRFS_IOC_START_SYNC, nil); err != nil {
+	if err = ioctl.Ioctl(f.f, _BTRFS_IOC_START_SYNC, 0); err != nil {
 		return
 	}
-	return ioctl.Do(f.f, _BTRFS_IOC_WAIT_SYNC, nil)
+	return ioctl.Ioctl(f.f, _BTRFS_IOC_WAIT_SYNC, 0)
 }
 
 func (f *FS) CreateSubVolume(name string) error {
@@ -221,58 +218,4 @@ func (f *FS) ListSubvolumes(filter func(Subvolume) bool) ([]Subvolume, error) {
 	return out, nil
 }
 
-type Compression string
-
-const (
-	CompressionNone = Compression("")
-	LZO             = Compression("lzo")
-	ZLIB            = Compression("zlib")
-)
-
-const xattrCompression = xattrPrefix + "compression"
-
-func SetCompression(path string, v Compression) error {
-	var value []byte
-	if v != CompressionNone {
-		var err error
-		value, err = syscall.ByteSliceFromString(string(v))
-		if err != nil {
-			return err
-		}
-	}
-	err := syscall.Setxattr(path, xattrCompression, value, 0)
-	if err != nil {
-		return &os.PathError{Op: "setxattr", Path: path, Err: err}
-	}
-	return nil
-}
-
-func GetCompression(path string) (Compression, error) {
-	var buf []byte
-	for {
-		sz, err := syscall.Getxattr(path, xattrCompression, nil)
-		if err == syscall.ENODATA || sz == 0 {
-			return CompressionNone, nil
-		} else if err != nil {
-			return CompressionNone, &os.PathError{Op: "getxattr", Path: path, Err: err}
-		}
-		if cap(buf) < sz {
-			buf = make([]byte, sz)
-		} else {
-			buf = buf[:sz]
-		}
-		sz, err = syscall.Getxattr(path, xattrCompression, buf)
-		if err == syscall.ENODATA {
-			return CompressionNone, nil
-		} else if err == syscall.ERANGE {
-			// xattr changed by someone else, and is larger than our current buffer
-			continue
-		} else if err != nil {
-			return CompressionNone, &os.PathError{Op: "getxattr", Path: path, Err: err}
-		}
-		buf = buf[:sz]
-		break
-	}
-	buf = bytes.TrimSuffix(buf, []byte{0})
-	return Compression(buf), nil
-}
+func (f *FS) Usage() (UsageInfo, error) { return spaceUsage(f.f) }

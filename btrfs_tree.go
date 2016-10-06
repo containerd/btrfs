@@ -6,6 +6,9 @@ import (
 )
 
 const (
+	_BTRFS_BLOCK_GROUP_TYPE_MASK = (blockGroupData |
+		blockGroupSystem |
+		blockGroupMetadata)
 	_BTRFS_BLOCK_GROUP_PROFILE_MASK = (blockGroupRaid0 |
 		blockGroupRaid1 |
 		blockGroupRaid5 |
