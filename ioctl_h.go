@@ -25,8 +25,9 @@ var zeroUUID UUID
 
 type UUID [UUIDSize]byte
 
+func (id UUID) IsZero() bool { return id == zeroUUID }
 func (id UUID) String() string {
-	if id == zeroUUID {
+	if id.IsZero() {
 		return "<zero>"
 	}
 	buf := make([]byte, UUIDSize*2+4)
