@@ -169,7 +169,7 @@ func listSubVolumes(f *os.File) (map[uint64]Subvolume, error) {
 
 		// Set the min and max to backref keys. The search will
 		// only send back this type of key now.
-		min_type: rootBackrefKey,
+		min_type: rootItemKey,
 		max_type: rootBackrefKey,
 
 		min_objectid: firstFreeObjectid,
