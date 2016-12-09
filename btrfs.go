@@ -87,6 +87,7 @@ func SubvolSnapshot(dst, src string, readonly bool) error {
 	return nil
 }
 
+// SubvolDelete deletes the subvolumes under the given path.
 func SubvolDelete(path string) error {
 	fmt.Println("delete", path)
 	dir, name := filepath.Split(path)
