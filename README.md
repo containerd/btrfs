@@ -1,4 +1,6 @@
 # go-btrfs
+[![GoDoc](https://godoc.org/github.com/stevvooe/go-btrfs?status.svg)](https://godoc.org/github.com/stevvooe/go-btrfs)
+
 Native Go bindings for btrfs.
 
 As opposed to other drivers, this driver pre-generates native Go definitions,
