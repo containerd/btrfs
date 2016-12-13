@@ -1,6 +1,5 @@
 
-.PHONY: clean binaries
-
+.PHONY: clean binaries generate lint vet test
 all: vet lint test binaries
 
 binaries: bin/btrfs-test
@@ -14,7 +13,7 @@ lint:
 test:
 	go test -v ./...
 
-bin/%: ./cmd/%
+bin/%: ./cmd/% *.go
 	go build -o ./$@ ./$<
 
 clean:

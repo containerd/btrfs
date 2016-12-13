@@ -3,9 +3,6 @@
 
 Native Go bindings for btrfs.
 
-As opposed to other drivers, this driver pre-generates native Go definitions,
-rather than using cgo.
-
 # Status
 
 These are in the early stages. We will try to maintain stability, but please
@@ -15,3 +12,7 @@ vendor if you are relying on these directly.
 
 This package may not cover all the use cases for btrfs. If something you need
 is missing, please don't hesitate to submit a PR.
+
+Note that due to struct alignment issues, this isn't yet fully native.
+Preferrably, this could be resolved, so contributions in this direction are
+greatly appreciated.
