@@ -259,10 +259,6 @@ func SubvolList(path string) ([]Info, error) {
 func SubvolCreate(path string) error {
 	dir, name := filepath.Split(path)
 
-	if err := IsSubvolume(dir); err != nil {
-		return errors.Wrapf(err, "%v is not a subvolume", dir)
-	}
-
 	fp, err := os.Open(dir)
 	if err != nil {
 		return err
