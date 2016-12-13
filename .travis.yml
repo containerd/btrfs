@@ -7,8 +7,8 @@ go:
 before_install:
     - sudo apt-get update
     - sudo apt-get install -y btrfs-tools
-    - ls /usr/include/btrfs
     - dpkg -L btrfs-tools
+    - ls /usr/include/btrfs
     #   - go get golang.org/x/tools/cmd/vet
     #- go get golang.org/x/tools/cmd/cover
     - go get github.com/golang/lint/golint
