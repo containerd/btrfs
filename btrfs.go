@@ -376,10 +376,6 @@ func SubvolDelete(path string) error {
 }
 
 func openSubvolDir(path string) (*os.File, error) {
-	if err := IsSubvolume(path); err != nil {
-		return nil, errors.Wrapf(err, "%v must be a subvolume", path)
-	}
-
 	fp, err := os.Open(path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "opening %v as subvolume failed", path)
