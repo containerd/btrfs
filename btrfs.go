@@ -13,6 +13,10 @@ import "sort"
 // Required because Go has struct casting rules for negative numbers
 const __u64 u64_BTRFS_LAST_FREE_OBJECTID = (__u64)BTRFS_LAST_FREE_OBJECTID;
 const __u64 negative_one = (__u64)-1;
+
+static char* get_name_btrfs_ioctl_vol_args_v2(struct btrfs_ioctl_vol_args_v2* btrfs_struct) {
+	return btrfs_struct->name;
+}
 */
 import "C"
 
@@ -300,12 +304,13 @@ func SubvolSnapshot(dst, src string, readonly bool) error {
 	// dstdir is the ioctl arg, wile srcdir gets set on the args
 	var args C.struct_btrfs_ioctl_vol_args_v2
 	args.fd = C.__s64(srcfp.Fd())
+	name := C.get_name_btrfs_ioctl_vol_args_v2(&args)
 
 	if len(dstname) > C.BTRFS_SUBVOL_NAME_MAX {
 		return errors.Errorf("%q too long for subvolume", dstname)
 	}
 
-	nameptr := (*[1<<31 - 1]byte)(unsafe.Pointer(&args.name[0]))
+	nameptr := (*[1<<31 - 1]byte)(unsafe.Pointer(name))
 	copy(nameptr[:C.BTRFS_SUBVOL_NAME_MAX], []byte(dstname))
 
 	if readonly {
