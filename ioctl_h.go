@@ -631,8 +631,8 @@ func iocSync(f *os.File) error {
 	return ioctl.Do(f, _BTRFS_IOC_SYNC, nil)
 }
 
-func iocClone(f *os.File, out *int32) error {
-	return ioctl.Do(f, _BTRFS_IOC_CLONE, out)
+func iocClone(dst, src *os.File) error {
+	return ioctl.Ioctl(dst, _BTRFS_IOC_CLONE, src.Fd())
 }
 
 func iocAddDev(f *os.File, out *btrfs_ioctl_vol_args) error {

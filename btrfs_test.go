@@ -2,6 +2,7 @@ package btrfs
 
 import (
 	"github.com/dennwc/btrfs/test"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -93,5 +94,43 @@ func TestCompression(t *testing.T) {
 		t.Fatal(err)
 	} else if c != LZO {
 		t.Fatalf("unexpected compression returned: %q", string(c))
+	}
+}
+
+func TestCloneFile(t *testing.T) {
+	dir, closer := btrfstest.New(t, sizeDef)
+	defer closer()
+
+	f1, err := os.Create(filepath.Join(dir, "1.dat"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f1.Close()
+
+	const data = "btrfs_test"
+	_, err = f1.WriteString(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f2, err := os.Create(filepath.Join(dir, "2.dat"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f2.Close()
+
+	err = CloneFile(f2, f1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	buf := make([]byte, len(data))
+	n, err := f2.Read(buf)
+	if err != nil && err != io.EOF {
+		t.Fatal(err)
+	}
+	buf = buf[:n]
+	if string(buf) != data {
+		t.Fatalf("wrong data returned: %q", string(buf))
 	}
 }
