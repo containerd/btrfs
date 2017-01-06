@@ -7,7 +7,6 @@ import "sort"
 
 #include <stddef.h>
 #include <btrfs/ioctl.h>
-#include <btrfs/btrfs-list.h>
 #include "btrfs.h"
 
 // Required because Go has struct casting rules for negative numbers
@@ -57,11 +56,6 @@ func SubvolInfo(path string) (info Info, err error) {
 		return info, err
 	}
 
-	mnt, err := findMountPoint(path)
-	if err != nil {
-		return info, err
-	}
-
 	fp, err := openSubvolDir(path)
 	if err != nil {
 		return info, err
@@ -73,53 +67,19 @@ func SubvolInfo(path string) (info Info, err error) {
 		return info, err
 	}
 
-	var ri C.struct_root_info
-	ri.root_id = C.u64(id)
-	if id != C.BTRFS_FS_TREE_OBJECTID {
-		// TODO(stevvooe): Remove this call and replace with the approch in
-		// SubvolList. Both aren't very efficient, as they query the whole
-		// dataset to get just a single record.
-		ret, errno := C.btrfs_get_subvol(C.int(fp.Fd()), &ri)
-		if ret != 0 {
-			fmt.Println("failed")
-		}
-
-		if errno != nil {
-			return info, errno
-		}
-	} else {
-		return info, errors.Errorf("%q is a toplevel subvolume", path)
+	subvolsByID, err := subvolMap(path)
+	if err != nil {
+		return info, err
 	}
 
-	info.ID = uint64(ri.root_id)
-	info.ParentID = uint64(ri.ref_tree)
-	info.TopLevelID = uint64(ri.top_id)
-	info.DirID = uint64(ri.dir_id)
-
-	info.Offset = uint64(ri.root_offset)
-	info.Generation = uint64(ri.gen)
-	info.OriginalGeneration = uint64(ri.ogen)
-
-	info.Name = C.GoString(ri.name)
-	info.Path = filepath.Join(mnt, C.GoString(ri.full_path))
-
-	info.UUID = uuidString(&ri.uuid)
-	info.ParentUUID = uuidString(&ri.puuid)
-	info.ReceivedUUID = uuidString(&ri.ruuid)
-
-	// For some reason, these are different flags for readonly depending on the
-	// context. Beware. Must be BTRFS_ROOT_SUBVOL_RDONLY, not
-	// BTRFS_SUBVOL_RDONLY, which is used for ioctls.
-	if ri.flags&C.BTRFS_ROOT_SUBVOL_RDONLY != 0 {
-		info.Readonly = true
+	if info, ok := subvolsByID[id]; ok {
+		return info, nil
 	}
 
-	return info, nil
+	return info, errors.Errorf("%q not found", path)
 }
 
-// SubvolList will return the information for all subvolumes corresponding to
-// the provided path.
-func SubvolList(path string) ([]Info, error) {
+func subvolMap(path string) (map[uint64]Info, error) {
 	fp, err := openSubvolDir(path)
 	if err != nil {
 		return nil, err
@@ -236,7 +196,6 @@ func SubvolList(path string) ([]Info, error) {
 		return nil, err
 	}
 
-	subvols := make([]Info, 0, len(subvolsByID))
 	for _, sv := range subvolsByID {
 		path := sv.Name
 		parentID := sv.ParentID
@@ -252,8 +211,23 @@ func SubvolList(path string) ([]Info, error) {
 		}
 
 		sv.Path = filepath.Join(mnt, path)
+	}
+	return subvolsByID, nil
+}
+
+// SubvolList will return the information for all subvolumes corresponding to
+// the provided path.
+func SubvolList(path string) ([]Info, error) {
+	subvolsByID, err := subvolMap(path)
+	if err != nil {
+		return nil, err
+	}
+
+	subvols := make([]Info, 0, len(subvolsByID))
+	for _, sv := range subvolsByID {
 		subvols = append(subvols, sv)
 	}
+
 	sort.Sort(infosByID(subvols))
 
 	return subvols, nil
