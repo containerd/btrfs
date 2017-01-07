@@ -1,6 +1,9 @@
 package btrfs
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type ErrNotBtrfs struct {
 	Path string
@@ -42,3 +45,8 @@ var errorString = map[ErrCode]string{
 	ErrDevOnlyWritable:      "unable to remove the only writeable device",
 	ErrDevExclRunInProgress: "add/delete/balance/replace/resize operation in progress",
 }
+
+var (
+	ErrNotFound       = errors.New("not found")
+	errNotImplemented = errors.New("not implemented")
+)

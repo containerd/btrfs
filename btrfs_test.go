@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -72,6 +74,70 @@ func TestIsSubvolume(t *testing.T) {
 
 	mkdir("d1/v2/d3")
 	mksub("d1/v2/v3")
+}
+
+func TestSubvolumes(t *testing.T) {
+	dir, closer := btrfstest.New(t, sizeDef)
+	defer closer()
+	fs, err := Open(dir, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fs.Close()
+
+	mksub := func(in string, path string) {
+		if in != "" {
+			path = filepath.Join(dir, in, path)
+		} else {
+			path = filepath.Join(dir, path)
+		}
+		if err := CreateSubVolume(path); err != nil {
+			t.Fatalf("cannot create subvolume %v: %v", path, err)
+		}
+	}
+	delsub := func(path string) {
+		path = filepath.Join(dir, path)
+		if err := DeleteSubVolume(path); err != nil {
+			t.Fatalf("cannot delete subvolume %v: %v", path, err)
+		}
+	}
+	expect := func(exp []string) {
+		subs, err := fs.ListSubvolumes(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got []string
+		for _, s := range subs {
+			if s.UUID.IsZero() {
+				t.Fatalf("zero uuid in %+v", s)
+			}
+			if s.Name != "" {
+				got = append(got, s.Name)
+			}
+		}
+		sort.Strings(got)
+		sort.Strings(exp)
+		if !reflect.DeepEqual(got, exp) {
+			t.Fatalf("list failed:\ngot: %v\nvs\nexp: %v", got, exp)
+		}
+	}
+
+	names := []string{"foo", "bar", "baz"}
+	for _, name := range names {
+		mksub("", name)
+	}
+	for _, name := range names {
+		mksub(names[0], name)
+	}
+	expect([]string{
+		"foo", "bar", "baz",
+		"foo", "bar", "baz",
+	})
+	delsub("foo/bar")
+	expect([]string{
+		"foo", "bar", "baz",
+		"foo", "baz",
+	})
 }
 
 func TestCompression(t *testing.T) {

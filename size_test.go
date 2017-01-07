@@ -3,6 +3,7 @@ package btrfs
 import (
 	"reflect"
 	"testing"
+	"unsafe"
 )
 
 var caseSizes = []struct {
@@ -48,15 +49,21 @@ var caseSizes = []struct {
 	{obj: btrfs_ioctl_received_subvol_args{}, size: 200},
 	{obj: btrfs_ioctl_send_args{}, size: 72},
 
+	//{obj:btrfs_timespec{},size:12},
 	//{obj:btrfs_root_ref{},size:18},
 	//{obj:btrfs_root_item{},size:439},
+	{obj: btrfs_root_item_raw{}, size: 439},
+	{obj: btrfs_root_item_raw_p1{}, size: 439 - 23 - int(unsafe.Sizeof(btrfs_root_item_raw_p3{}))},
+	{obj: btrfs_root_item_raw_p3{}, size: 439 - 23 - int(unsafe.Sizeof(btrfs_root_item_raw_p1{}))},
 	//{obj:btrfs_inode_item{},size:160},
+	{obj: btrfs_inode_item_raw{}, size: 160},
+	{obj: timeBlock{}, size: 4 * 12},
 }
 
 func TestSizes(t *testing.T) {
 	for _, c := range caseSizes {
 		if sz := int(reflect.ValueOf(c.obj).Type().Size()); sz != c.size {
-			t.Fatalf("unexpected size of %T: %d", c.obj, sz)
+			t.Errorf("unexpected size of %T: %d (exp: %d)", c.obj, sz, c.size)
 		}
 	}
 }

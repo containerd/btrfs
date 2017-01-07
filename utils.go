@@ -18,19 +18,6 @@ func isBtrfs(path string) (bool, error) {
 	return stfs.Type == SuperMagic, nil
 }
 
-func IsReadOnly(path string) (bool, error) {
-	fs, err := Open(path, true)
-	if err != nil {
-		return false, err
-	}
-	defer fs.Close()
-	f, err := fs.GetFlags()
-	if err != nil {
-		return false, err
-	}
-	return f.ReadOnly(), nil
-}
-
 func findMountRoot(path string) (string, error) {
 	mounts, err := mtab.Mounts()
 	if err != nil {
@@ -77,7 +64,7 @@ func openDir(path string) (*os.File, error) {
 	return file, nil
 }
 
-type rawItem struct {
+type searchResult struct {
 	TransID  uint64
 	ObjectID uint64
 	Type     uint32
@@ -85,24 +72,24 @@ type rawItem struct {
 	Data     []byte
 }
 
-func treeSearchRaw(f *os.File, key btrfs_ioctl_search_key) (out []rawItem, _ error) {
+func treeSearchRaw(mnt *os.File, key btrfs_ioctl_search_key) (out []searchResult, _ error) {
 	args := btrfs_ioctl_search_args{
 		key: key,
 	}
-	if err := iocTreeSearch(f, &args); err != nil {
+	if err := iocTreeSearch(mnt, &args); err != nil {
 		return nil, err
 	}
-	out = make([]rawItem, 0, args.key.nr_items)
+	out = make([]searchResult, 0, args.key.nr_items)
 	buf := args.buf[:]
 	for i := 0; i < int(args.key.nr_items); i++ {
 		h := (*btrfs_ioctl_search_header)(unsafe.Pointer(&buf[0]))
 		buf = buf[unsafe.Sizeof(btrfs_ioctl_search_header{}):]
-		out = append(out, rawItem{
+		out = append(out, searchResult{
 			TransID:  h.transid,
 			ObjectID: h.objectid,
-			Type:     h.typ,
 			Offset:   h.offset,
-			Data:     buf[:h.len], // TODO: reallocate?
+			Type:     h.typ,
+			Data:     buf[:h.len:h.len], // TODO: reallocate?
 		})
 		buf = buf[h.len:]
 	}

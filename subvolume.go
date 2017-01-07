@@ -146,6 +146,23 @@ func SnapshotSubVolume(subvol, dst string, ro bool) error {
 	return nil
 }
 
+func IsReadOnly(path string) (bool, error) {
+	f, err := GetFlags(path)
+	if err != nil {
+		return false, err
+	}
+	return f.ReadOnly(), nil
+}
+
+func GetFlags(path string) (SubvolFlags, error) {
+	fs, err := Open(path, true)
+	if err != nil {
+		return 0, err
+	}
+	defer fs.Close()
+	return fs.GetFlags()
+}
+
 type Subvolume struct {
 	ObjectID     uint64
 	TransID      uint64
@@ -205,18 +222,15 @@ func listSubVolumes(f *os.File) (map[uint64]Subvolume, error) {
 				o := m[obj.ObjectID]
 				o.TransID = obj.TransID
 				o.ObjectID = obj.ObjectID
-				// TODO: decode whole object?
-				o.Gen = asUint64(obj.Data[160:]) // size of btrfs_inode_item
-				o.Flags = asUint64(obj.Data[160+6*8:])
-				const sz = 439
-				const toff = sz - 8*8 - 4*12
-				o.CTime = asTime(obj.Data[toff+0*12:])
-				o.OTime = asTime(obj.Data[toff+1*12:])
-				o.OGen = asUint64(obj.Data[toff-3*8:])
-				const uoff = toff - 4*8 - 3*UUIDSize
-				copy(o.UUID[:], obj.Data[uoff+0*UUIDSize:])
-				copy(o.ParentUUID[:], obj.Data[uoff+1*UUIDSize:])
-				copy(o.ReceivedUUID[:], obj.Data[uoff+2*UUIDSize:])
+				robj := asRootItem(obj.Data).Decode()
+				o.Gen = robj.Gen
+				o.Flags = robj.Flags
+				o.CTime = robj.CTime
+				o.OTime = robj.OTime
+				o.OGen = robj.GenV2
+				o.UUID = robj.UUID
+				o.ParentUUID = robj.ParentUUID
+				o.ReceivedUUID = robj.ReceivedUUID
 				m[obj.ObjectID] = o
 			}
 		}
@@ -242,4 +256,45 @@ func listSubVolumes(f *os.File) (map[uint64]Subvolume, error) {
 		}
 	}
 	return m, nil
+}
+
+type subvolInfo struct {
+	RootID uint64
+
+	UUID         UUID
+	ParentUUID   UUID
+	ReceivedUUID UUID
+
+	CTransID uint64
+	OTransID uint64
+	STransID uint64
+	RTransID uint64
+
+	Path string
+}
+
+func subvolSearchByUUID(mnt *os.File, uuid UUID) (*subvolInfo, error) {
+	id, err := lookupUUIDSubvolItem(mnt, uuid)
+	if err != nil {
+		return nil, err
+	}
+	return subvolSearchByRootID(mnt, id)
+}
+
+func subvolSearchByReceivedUUID(mnt *os.File, uuid UUID) (*subvolInfo, error) {
+	id, err := lookupUUIDReceivedSubvolItem(mnt, uuid)
+	if err != nil {
+		return nil, err
+	}
+	return subvolSearchByRootID(mnt, id)
+}
+
+func subvolSearchByPath(mnt *os.File, path string) (*subvolInfo, error) {
+	var id uint64
+	panic("not implemented")
+	return subvolSearchByRootID(mnt, id)
+}
+
+func subvolSearchByRootID(mnt *os.File, rootID uint64) (*subvolInfo, error) {
+	panic("not implemented")
 }
