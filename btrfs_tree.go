@@ -15,10 +15,11 @@ const (
 		blockGroupRaid6 |
 		blockGroupDup |
 		blockGroupRaid10)
+	_BTRFS_BLOCK_GROUP_MASK = _BTRFS_BLOCK_GROUP_TYPE_MASK | _BTRFS_BLOCK_GROUP_PROFILE_MASK
 )
 
 type rootRef struct {
-	DirID    uint64
+	DirID    objectID
 	Sequence uint64
 	Name     string
 }
@@ -42,7 +43,7 @@ func asRootRef(p []byte) rootRef {
 	// assuming that it is highly unsafe to have sizeof(struct) > len(data)
 	// (*btrfs_root_ref)(unsafe.Pointer(&p[0])) and sizeof(btrfs_root_ref) == 24
 	ref := rootRef{
-		DirID:    asUint64(p[0:]),
+		DirID:    objectID(asUint64(p[0:])),
 		Sequence: asUint64(p[8:]),
 	}
 	if n := asUint16(p[16:]); n > 0 {
@@ -76,11 +77,7 @@ func (t btrfs_timespec_raw) Decode() time.Time {
 	return time.Unix(int64(sec), int64(nsec))
 }
 
-// timeBlock is a raw set of bytes for 4 time fields:
-// 	atime btrfs_timespec
-// 	ctime btrfs_timespec
-// 	mtime btrfs_timespec
-// 	otime btrfs_timespec
+// timeBlock is a raw set of bytes for 4 time fields.
 // It is used to keep correct alignment when accessing structures from btrfs.
 type timeBlock [4]btrfs_timespec_raw
 

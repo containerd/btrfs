@@ -6,8 +6,8 @@ import (
 	"syscall"
 )
 
-func cmpChunkBlockGroup(f1, f2 uint64) int {
-	var mask uint64
+func cmpChunkBlockGroup(f1, f2 blockGroup) int {
+	var mask blockGroup
 
 	if (f1 & _BTRFS_BLOCK_GROUP_TYPE_MASK) ==
 		(f2 & _BTRFS_BLOCK_GROUP_TYPE_MASK) {
@@ -34,7 +34,7 @@ type spaceInfoByBlockGroup []spaceInfo
 func (a spaceInfoByBlockGroup) Len() int      { return len(a) }
 func (a spaceInfoByBlockGroup) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a spaceInfoByBlockGroup) Less(i, j int) bool {
-	return cmpChunkBlockGroup(a[i].Flags, a[j].Flags) < 0
+	return cmpChunkBlockGroup(blockGroup(a[i].Flags), blockGroup(a[j].Flags)) < 0
 }
 
 type UsageInfo struct {
@@ -93,41 +93,42 @@ func spaceUsage(f *os.File) (UsageInfo, error) {
 	)
 	for _, s := range spaces {
 		ratio := 1
+		bg := s.Flags.BlockGroup()
 		switch {
-		case s.Flags&blockGroupRaid0 != 0:
+		case bg&blockGroupRaid0 != 0:
 			ratio = 1
-		case s.Flags&blockGroupRaid1 != 0:
+		case bg&blockGroupRaid1 != 0:
 			ratio = 2
-		case s.Flags&blockGroupRaid5 != 0:
+		case bg&blockGroupRaid5 != 0:
 			ratio = 0
-		case s.Flags&blockGroupRaid6 != 0:
+		case bg&blockGroupRaid6 != 0:
 			ratio = 0
-		case s.Flags&blockGroupDup != 0:
+		case bg&blockGroupDup != 0:
 			ratio = 2
-		case s.Flags&blockGroupRaid10 != 0:
+		case bg&blockGroupRaid10 != 0:
 			ratio = 2
 		}
 		if ratio > maxDataRatio {
 			maxDataRatio = ratio
 		}
-		if s.Flags&spaceInfoGlobalRsv != 0 {
+		if bg&spaceInfoGlobalRsv != 0 {
 			u.GlobalReserve = s.TotalBytes
 			u.GlobalReserveUsed = s.UsedBytes
 		}
-		if s.Flags&(blockGroupData|blockGroupMetadata) == (blockGroupData | blockGroupMetadata) {
+		if bg&(blockGroupData|blockGroupMetadata) == (blockGroupData | blockGroupMetadata) {
 			mixed = true
 		}
-		if s.Flags&blockGroupData != 0 {
+		if bg&blockGroupData != 0 {
 			u.RawDataUsed += s.UsedBytes * uint64(ratio)
 			u.RawDataChunks += s.TotalBytes * uint64(ratio)
 			u.LogicalDataChunks += s.TotalBytes
 		}
-		if s.Flags&blockGroupMetadata != 0 {
+		if bg&blockGroupMetadata != 0 {
 			u.RawMetaUsed += s.UsedBytes * uint64(ratio)
 			u.RawMetaChunks += s.TotalBytes * uint64(ratio)
 			u.LogicalMetaChunks += s.TotalBytes
 		}
-		if s.Flags&blockGroupSystem != 0 {
+		if bg&blockGroupSystem != 0 {
 			u.SystemUsed += s.UsedBytes * uint64(ratio)
 			u.SystemChunks += s.TotalBytes * uint64(ratio)
 		}

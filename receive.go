@@ -48,7 +48,7 @@ func Receive(r io.Reader, dstDir string) error {
 	}
 	// We want to resolve the path to the subvolume we're sitting in
 	// so that we can adjust the paths of any subvols we want to receive in.
-	subvolID, err := getPathRootID(mnt)
+	subvolID, err := getFileRootID(mnt)
 	if err != nil {
 		return err
 	}

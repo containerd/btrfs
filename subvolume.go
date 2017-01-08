@@ -19,7 +19,7 @@ func IsSubVolume(path string) (bool, error) {
 	if err := syscall.Stat(path, &st); err != nil {
 		return false, &os.PathError{Op: "stat", Path: path, Err: err}
 	}
-	if st.Ino != firstFreeObjectid ||
+	if objectID(st.Ino) != firstFreeObjectid ||
 		st.Mode&syscall.S_IFMT != syscall.S_IFDIR {
 		return false, nil
 	}
@@ -164,11 +164,11 @@ func GetFlags(path string) (SubvolFlags, error) {
 }
 
 type Subvolume struct {
-	ObjectID     uint64
+	ObjectID     objectID
 	TransID      uint64
 	Name         string
 	RefTree      uint64
-	DirID        uint64
+	DirID        objectID
 	Gen          uint64
 	OGen         uint64
 	Flags        uint64
@@ -179,10 +179,10 @@ type Subvolume struct {
 	CTime        time.Time
 }
 
-func listSubVolumes(f *os.File) (map[uint64]Subvolume, error) {
+func listSubVolumes(f *os.File) (map[objectID]Subvolume, error) {
 	sk := btrfs_ioctl_search_key{
 		// search in the tree of tree roots
-		tree_id: 1,
+		tree_id: rootTreeObjectid,
 
 		// Set the min and max to backref keys. The search will
 		// only send back this type of key now.
@@ -199,7 +199,7 @@ func listSubVolumes(f *os.File) (map[uint64]Subvolume, error) {
 
 		nr_items: 4096, // just a big number, doesn't matter much
 	}
-	m := make(map[uint64]Subvolume)
+	m := make(map[objectID]Subvolume)
 	for {
 		out, err := treeSearchRaw(f, sk)
 		if err != nil {
@@ -259,11 +259,16 @@ func listSubVolumes(f *os.File) (map[uint64]Subvolume, error) {
 }
 
 type subvolInfo struct {
-	RootID uint64
+	RootID objectID
 
 	UUID         UUID
 	ParentUUID   UUID
 	ReceivedUUID UUID
+
+	CTime time.Time
+	OTime time.Time
+	STime time.Time
+	RTime time.Time
 
 	CTransID uint64
 	OTransID uint64
@@ -278,7 +283,7 @@ func subvolSearchByUUID(mnt *os.File, uuid UUID) (*subvolInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return subvolSearchByRootID(mnt, id)
+	return subvolSearchByRootID(mnt, id, "")
 }
 
 func subvolSearchByReceivedUUID(mnt *os.File, uuid UUID) (*subvolInfo, error) {
@@ -286,15 +291,95 @@ func subvolSearchByReceivedUUID(mnt *os.File, uuid UUID) (*subvolInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return subvolSearchByRootID(mnt, id)
+	return subvolSearchByRootID(mnt, id, "")
 }
 
 func subvolSearchByPath(mnt *os.File, path string) (*subvolInfo, error) {
-	var id uint64
-	panic("not implemented")
-	return subvolSearchByRootID(mnt, id)
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(mnt.Name(), path)
+	}
+	id, err := getPathRootID(path)
+	if err != nil {
+		return nil, err
+	}
+	return subvolSearchByRootID(mnt, id, path)
 }
 
-func subvolSearchByRootID(mnt *os.File, rootID uint64) (*subvolInfo, error) {
-	panic("not implemented")
+func subvolidResolve(mnt *os.File, subvolID objectID) (string, error) {
+	return subvolidResolveSub(mnt, "", subvolID)
+}
+
+func subvolidResolveSub(mnt *os.File, path string, subvolID objectID) (string, error) {
+	if subvolID == fsTreeObjectid {
+		return "", nil
+	}
+	sk := btrfs_ioctl_search_key{
+		tree_id:      rootTreeObjectid,
+		min_objectid: subvolID,
+		max_objectid: subvolID,
+		min_type:     rootBackrefKey,
+		max_type:     rootBackrefKey,
+		max_offset:   maxUint64,
+		max_transid:  maxUint64,
+		nr_items:     1,
+	}
+	results, err := treeSearchRaw(mnt, sk)
+	if err != nil {
+		return "", err
+	} else if len(results) < 1 {
+		return "", ErrNotFound
+	}
+	res := results[0]
+	if objectID(res.Offset) != fsTreeObjectid {
+		spath, err := subvolidResolveSub(mnt, path, objectID(res.Offset))
+		if err != nil {
+			return "", err
+		}
+		path = spath + "/"
+	}
+	backRef := asRootRef(res.Data)
+	if backRef.DirID != firstFreeObjectid {
+		arg := btrfs_ioctl_ino_lookup_args{
+			treeid:   objectID(res.Offset),
+			objectid: backRef.DirID,
+		}
+		if err := iocInoLookup(mnt, &arg); err != nil {
+			return "", err
+		}
+		path += arg.Name()
+	}
+	return path + backRef.Name, nil
+}
+
+// subvolSearchByRootID
+//
+// Path is optional, and will be resolved automatically if not set.
+func subvolSearchByRootID(mnt *os.File, rootID objectID, path string) (*subvolInfo, error) {
+	robj, err := readRootItem(mnt, rootID)
+	if err != nil {
+		return nil, err
+	}
+	info := &subvolInfo{
+		RootID: rootID,
+
+		UUID:         robj.UUID,
+		ReceivedUUID: robj.ReceivedUUID,
+		ParentUUID:   robj.ParentUUID,
+
+		CTime: robj.CTime,
+		OTime: robj.OTime,
+		STime: robj.STime,
+		RTime: robj.RTime,
+
+		CTransID: robj.CTransID,
+		OTransID: robj.OTransID,
+		STransID: robj.STransID,
+		RTransID: robj.RTransID,
+
+		Path: path,
+	}
+	if path == "" {
+		info.Path, err = subvolidResolve(mnt, info.RootID)
+	}
+	return info, err
 }

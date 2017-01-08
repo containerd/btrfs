@@ -2,7 +2,7 @@ package btrfs
 
 import "os"
 
-func getPathRootID(file *os.File) (uint64, error) {
+func getFileRootID(file *os.File) (objectID, error) {
 	args := btrfs_ioctl_ino_lookup_args{
 		objectid: firstFreeObjectid,
 	}
@@ -10,4 +10,13 @@ func getPathRootID(file *os.File) (uint64, error) {
 		return 0, err
 	}
 	return args.treeid, nil
+}
+
+func getPathRootID(path string) (objectID, error) {
+	fs, err := Open(path, true)
+	if err != nil {
+		return 0, err
+	}
+	defer fs.Close()
+	return getFileRootID(fs.f)
 }

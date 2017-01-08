@@ -138,6 +138,21 @@ func TestSubvolumes(t *testing.T) {
 		"foo", "bar", "baz",
 		"foo", "baz",
 	})
+
+	path := filepath.Join(names[0], names[2])
+	mksub(path, "new")
+	path = filepath.Join(path, "new")
+
+	id, err := getPathRootID(filepath.Join(dir, path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := subvolSearchByRootID(fs.f, id, "")
+	if err != nil {
+		t.Fatal(err)
+	} else if info.Path != path {
+		t.Fatalf("wrong path returned: %v vs %v", info.Path, path)
+	}
 }
 
 func TestCompression(t *testing.T) {

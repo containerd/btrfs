@@ -19,6 +19,9 @@ var (
 	f_unexport = flag.Bool("u", true, "make all definitions unexported")
 	f_goname   = flag.Bool("g", true, "rename symbols to follow Go conventions")
 	f_trim     = flag.String("t", "", "prefix to trim from names")
+
+	f_constSuf  = flag.String("cs", "", "comma-separated list of constant suffixes to create typed constants")
+	f_constPref = flag.String("cp", "", "comma-separated list of constant prefixes to create typed constants")
 )
 
 var (
@@ -26,8 +29,30 @@ var (
 	reNegULL         = regexp.MustCompile(`-(\d+)ULL`)
 )
 
+var (
+	constTypes []constType
+)
+
+type constType struct {
+	Name   string
+	Type   string
+	Suffix string
+	Prefix string
+}
+
 func constName(s string) string {
 	s = strings.TrimPrefix(s, *f_trim)
+	typ := ""
+	for _, t := range constTypes {
+		if t.Suffix != "" && strings.HasSuffix(s, t.Suffix) {
+			//s = strings.TrimSuffix(s, t.Suffix)
+			typ = t.Name
+			break
+		} else if t.Prefix != "" && strings.HasPrefix(s, t.Prefix) {
+			typ = t.Name
+			break
+		}
+	}
 	if *f_goname {
 		buf := bytes.NewBuffer(nil)
 		buf.Grow(len(s))
@@ -49,6 +74,9 @@ func constName(s string) string {
 	} else if *f_unexport {
 		s = "_" + s
 	}
+	if typ != "" {
+		s += " " + typ
+	}
 	return s
 }
 
@@ -67,7 +95,6 @@ func process(w io.Writer, path string) error {
 	)
 
 	nl := true
-	fmt.Fprint(w, "// This code was auto-generated; DO NOT EDIT!\n\n")
 	defer fmt.Fprintln(w, ")")
 	for {
 		line, err := r.ReadBytes('\n')
@@ -136,8 +163,31 @@ func process(w io.Writer, path string) error {
 	}
 }
 
+func regConstTypes(str string, fnc func(*constType, string)) {
+	for _, s := range strings.Split(str, ",") {
+		kv := strings.Split(s, "=")
+		if len(kv) != 2 {
+			continue
+		}
+		st := strings.Split(kv[0], ":")
+		typ := "int"
+		if len(st) > 1 {
+			typ = st[1]
+		}
+		t := constType{Name: st[0], Type: typ}
+		fnc(&t, kv[1])
+		constTypes = append(constTypes, t)
+	}
+}
+
 func main() {
 	flag.Parse()
+	if suf := *f_constSuf; suf != "" {
+		regConstTypes(suf, func(t *constType, v string) { t.Suffix = v })
+	}
+	if pref := *f_constPref; pref != "" {
+		regConstTypes(pref, func(t *constType, v string) { t.Prefix = v })
+	}
 	var w io.Writer = os.Stdout
 	if path := *f_out; path != "" && path != "-" {
 		file, err := os.Create(path)
@@ -148,7 +198,11 @@ func main() {
 		w = file
 	}
 
-	fmt.Fprintf(w, "package %s\n", *f_pkg)
+	fmt.Fprintf(w, "package %s\n\n", *f_pkg)
+	fmt.Fprint(w, "// This code was auto-generated; DO NOT EDIT!\n\n")
+	for _, t := range constTypes {
+		fmt.Fprintf(w, "type %s %s\n\n", t.Name, t.Type)
+	}
 	for _, path := range flag.Args() {
 		if err := process(w, path); err != nil {
 			log.Fatal(err)

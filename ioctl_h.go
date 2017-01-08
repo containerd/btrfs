@@ -305,16 +305,27 @@ type btrfs_ioctl_balance_args struct {
 const _BTRFS_INO_LOOKUP_PATH_MAX = 4080
 
 type btrfs_ioctl_ino_lookup_args struct {
-	treeid   uint64
-	objectid uint64
+	treeid   objectID
+	objectid objectID
 	name     [_BTRFS_INO_LOOKUP_PATH_MAX]byte
 }
 
+func (arg *btrfs_ioctl_ino_lookup_args) Name() string {
+	n := 0
+	for i, b := range arg.name {
+		if b == '\x00' {
+			n = i
+			break
+		}
+	}
+	return string(arg.name[:n])
+}
+
 type btrfs_ioctl_search_key struct {
-	tree_id uint64 // which root are we searching.  0 is the tree of tree roots
+	tree_id objectID // which root are we searching.  0 is the tree of tree roots
 	// keys returned will be >= min and <= max
-	min_objectid uint64
-	max_objectid uint64
+	min_objectid objectID
+	max_objectid objectID
 	// keys returned will be >= min and <= max
 	min_offset uint64
 	max_offset uint64
@@ -322,8 +333,8 @@ type btrfs_ioctl_search_key struct {
 	min_transid uint64
 	max_transid uint64
 	// keys returned will be >= min and <= max
-	min_type uint32
-	max_type uint32
+	min_type treeKeyType
+	max_type treeKeyType
 	// how many items did userland ask for, and how many are we returning
 	nr_items uint32
 	_        [36]byte
@@ -331,9 +342,9 @@ type btrfs_ioctl_search_key struct {
 
 type btrfs_ioctl_search_header struct {
 	transid  uint64
-	objectid uint64
+	objectid objectID
 	offset   uint64
-	typ      uint32
+	typ      treeKeyType
 	len      uint32
 }
 
@@ -538,8 +549,8 @@ const (
 type btrfs_ioctl_send_args struct {
 	send_fd             int64     // in
 	clone_sources_count uint64    // in
-	clone_sources       *uint64   // in
-	parent_root         uint64    // in
+	clone_sources       *objectID // in
+	parent_root         objectID  // in
 	flags               uint64    // in
 	_                   [4]uint64 // in
 }
@@ -679,8 +690,14 @@ func iocDefaultSubvol(f *os.File, out *uint64) error {
 	return ioctl.Do(f, _BTRFS_IOC_DEFAULT_SUBVOL, out)
 }
 
+type spaceFlags uint64
+
+func (f spaceFlags) BlockGroup() blockGroup {
+	return blockGroup(f) & _BTRFS_BLOCK_GROUP_MASK
+}
+
 type spaceInfo struct {
-	Flags      uint64
+	Flags      spaceFlags
 	TotalBytes uint64
 	UsedBytes  uint64
 }
@@ -715,7 +732,7 @@ func iocSpaceInfo(f *os.File) ([]spaceInfo, error) {
 	for i := 0; i < int(n); i++ {
 		info := (*btrfs_ioctl_space_info)(unsafe.Pointer(ptr))
 		out[i] = spaceInfo{
-			Flags:      info.flags,
+			Flags:      spaceFlags(info.flags),
 			TotalBytes: info.total_bytes,
 			UsedBytes:  info.used_bytes,
 		}

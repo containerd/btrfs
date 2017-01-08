@@ -66,8 +66,8 @@ func openDir(path string) (*os.File, error) {
 
 type searchResult struct {
 	TransID  uint64
-	ObjectID uint64
-	Type     uint32
+	ObjectID objectID
+	Type     treeKeyType
 	Offset   uint64
 	Data     []byte
 }

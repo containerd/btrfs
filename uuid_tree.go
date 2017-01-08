@@ -6,23 +6,23 @@ import (
 	"os"
 )
 
-func lookupUUIDSubvolItem(f *os.File, uuid UUID) (uint64, error) {
+func lookupUUIDSubvolItem(f *os.File, uuid UUID) (objectID, error) {
 	return uuidTreeLookupAny(f, uuid, uuidKeySubvol)
 }
 
-func lookupUUIDReceivedSubvolItem(f *os.File, uuid UUID) (uint64, error) {
+func lookupUUIDReceivedSubvolItem(f *os.File, uuid UUID) (objectID, error) {
 	return uuidTreeLookupAny(f, uuid, uuidKeyReceivedSubvol)
 }
 
-func (id UUID) toKey() (objID, off uint64) {
-	objID = binary.LittleEndian.Uint64(id[:8])
+func (id UUID) toKey() (objID objectID, off uint64) {
+	objID = objectID(binary.LittleEndian.Uint64(id[:8]))
 	off = binary.LittleEndian.Uint64(id[8:16])
 	return
 }
 
 // uuidTreeLookupAny searches uuid tree for a given uuid in specified field.
 // It returns ErrNotFound if object was not found.
-func uuidTreeLookupAny(f *os.File, uuid UUID, typ uint32) (uint64, error) {
+func uuidTreeLookupAny(f *os.File, uuid UUID, typ treeKeyType) (objectID, error) {
 	objId, off := uuid.toKey()
 	args := btrfs_ioctl_search_key{
 		tree_id:      uuidTreeObjectid,
@@ -45,5 +45,5 @@ func uuidTreeLookupAny(f *os.File, uuid UUID, typ uint32) (uint64, error) {
 	if len(out.Data) != 8 {
 		return 0, fmt.Errorf("btrfs: uuid item with illegal size %d", len(out.Data))
 	}
-	return binary.LittleEndian.Uint64(out.Data), nil
+	return objectID(binary.LittleEndian.Uint64(out.Data)), nil
 }

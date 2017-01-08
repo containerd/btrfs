@@ -2,6 +2,18 @@ package btrfs
 
 // This code was auto-generated; DO NOT EDIT!
 
+type treeKeyType uint32
+
+type objectID uint64
+
+type fileType int
+
+type fileExtentType int
+
+type devReplaceItemState int
+
+type blockGroup uint64
+
 // This header contains the structure definitions and constants used
 // by file system objects that can be retrieved using
 // the BTRFS_IOC_SEARCH_TREE ioctl. That means basically anything that
@@ -9,179 +21,179 @@ package btrfs
 
 const (
 	// Holds pointers to all of the tree roots
-	rootTreeObjectid = 1
+	rootTreeObjectid objectID = 1
 
 	// Stores information about which extents are in use, and reference counts
-	extentTreeObjectid = 2
+	extentTreeObjectid objectID = 2
 
 	// Chunk tree stores translations from logical -> physical block numbering
 	// the super block points to the chunk tree
-	chunkTreeObjectid = 3
+	chunkTreeObjectid objectID = 3
 
 	// Stores information about which areas of a given device are in use.
 	// one per device. The tree of tree roots points to the device tree
-	devTreeObjectid = 4
+	devTreeObjectid objectID = 4
 
 	// One per subvolume, storing files and directories
-	fsTreeObjectid = 5
+	fsTreeObjectid objectID = 5
 
 	// Directory objectid inside the root tree
-	rootTreeDirObjectid = 6
+	rootTreeDirObjectid objectID = 6
 
 	// Holds checksums of all the data extents
-	csumTreeObjectid = 7
+	csumTreeObjectid objectID = 7
 
 	// Holds quota configuration and tracking
-	quotaTreeObjectid = 8
+	quotaTreeObjectid objectID = 8
 
 	// For storing items that use the BTRFS_UUID_KEY* types
-	uuidTreeObjectid = 9
+	uuidTreeObjectid objectID = 9
 
 	// Tracks free space in block groups.
-	freeSpaceTreeObjectid = 10
+	freeSpaceTreeObjectid objectID = 10
 
 	// Device stats in the device tree
-	devStatsObjectid = 0
+	devStatsObjectid objectID = 0
 
 	// For storing balance parameters in the root tree
-	balanceObjectid = (1<<64 - 4)
+	balanceObjectid objectID = (1<<64 - 4)
 
 	// Orhpan objectid for tracking unlinked/truncated files
-	orphanObjectid = (1<<64 - 5)
+	orphanObjectid objectID = (1<<64 - 5)
 
 	// Does write ahead logging to speed up fsyncs
-	treeLogObjectid      = (1<<64 - 6)
-	treeLogFixupObjectid = (1<<64 - 7)
+	treeLogObjectid      objectID = (1<<64 - 6)
+	treeLogFixupObjectid objectID = (1<<64 - 7)
 
 	// For space balancing
-	treeRelocObjectid     = (1<<64 - 8)
-	dataRelocTreeObjectid = (1<<64 - 9)
+	treeRelocObjectid     objectID = (1<<64 - 8)
+	dataRelocTreeObjectid objectID = (1<<64 - 9)
 
 	// Extent checksums all have this objectid
 	// this allows them to share the logging tree
 	// for fsyncs
-	extentCsumObjectid = (1<<64 - 10)
+	extentCsumObjectid objectID = (1<<64 - 10)
 
 	// For storing free space cache
-	freeSpaceObjectid = (1<<64 - 11)
+	freeSpaceObjectid objectID = (1<<64 - 11)
 
 	// The inode number assigned to the special inode for storing
 	// free ino cache
-	freeInoObjectid = (1<<64 - 12)
+	freeInoObjectid objectID = (1<<64 - 12)
 
 	// Dummy objectid represents multiple objectids
 	multipleObjectids = (1<<64 - 255)
 
 	// All files have objectids in this range.
-	firstFreeObjectid      = 256
-	lastFreeObjectid       = (1<<64 - 256)
-	firstChunkTreeObjectid = 256
+	firstFreeObjectid      objectID = 256
+	lastFreeObjectid       objectID = (1<<64 - 256)
+	firstChunkTreeObjectid objectID = 256
 
 	// The device items go into the chunk tree. The key is in the form
 	// [ 1 BTRFS_DEV_ITEM_KEY device_id ]
-	devItemsObjectid = 1
+	devItemsObjectid objectID = 1
 
-	btreeInodeObjectid = 1
+	btreeInodeObjectid objectID = 1
 
-	emptySubvolDirObjectid = 2
+	emptySubvolDirObjectid objectID = 2
 
 	devReplaceDevid = 0
 
 	// Inode items have the data typically returned from stat and store other
 	// info about object characteristics. There is one for every file and dir in
 	// the FS
-	inodeItemKey   = 1
-	inodeRefKey    = 12
-	inodeExtrefKey = 13
-	xattrItemKey   = 24
-	orphanItemKey  = 48
+	inodeItemKey   treeKeyType = 1
+	inodeRefKey    treeKeyType = 12
+	inodeExtrefKey treeKeyType = 13
+	xattrItemKey   treeKeyType = 24
+	orphanItemKey  treeKeyType = 48
 	// Reserve 2-15 close to the inode for later flexibility
 
 	// Dir items are the name -> inode pointers in a directory. There is one
 	// for every name in a directory.
-	dirLogItemKey  = 60
-	dirLogIndexKey = 72
-	dirItemKey     = 84
-	dirIndexKey    = 96
+	dirLogItemKey  treeKeyType = 60
+	dirLogIndexKey treeKeyType = 72
+	dirItemKey     treeKeyType = 84
+	dirIndexKey    treeKeyType = 96
 	// Extent data is for file data
-	extentDataKey = 108
+	extentDataKey treeKeyType = 108
 
 	// Extent csums are stored in a separate tree and hold csums for
 	// an entire extent on disk.
-	extentCsumKey = 128
+	extentCsumKey treeKeyType = 128
 
 	// Root items point to tree roots. They are typically in the root
 	// tree used by the super block to find all the other trees
-	rootItemKey = 132
+	rootItemKey treeKeyType = 132
 
 	// Root backrefs tie subvols and snapshots to the directory entries that
 	// reference them
-	rootBackrefKey = 144
+	rootBackrefKey treeKeyType = 144
 
 	// Root refs make a fast index for listing all of the snapshots and
 	// subvolumes referenced by a given root. They point directly to the
 	// directory item in the root that references the subvol
-	rootRefKey = 156
+	rootRefKey treeKeyType = 156
 
 	// Extent items are in the extent map tree. These record which blocks
 	// are used, and how many references there are to each block
-	extentItemKey = 168
+	extentItemKey treeKeyType = 168
 
 	// The same as the BTRFS_EXTENT_ITEM_KEY, except it's metadata we already know
 	// the length, so we save the level in key->offset instead of the length.
-	metadataItemKey = 169
+	metadataItemKey treeKeyType = 169
 
-	treeBlockRefKey = 176
+	treeBlockRefKey treeKeyType = 176
 
-	extentDataRefKey = 178
+	extentDataRefKey treeKeyType = 178
 
-	extentRefV0Key = 180
+	extentRefV0Key treeKeyType = 180
 
-	sharedBlockRefKey = 182
+	sharedBlockRefKey treeKeyType = 182
 
-	sharedDataRefKey = 184
+	sharedDataRefKey treeKeyType = 184
 
 	// Block groups give us hints into the extent allocation trees. Which
 	// blocks are free etc etc
-	blockGroupItemKey = 192
+	blockGroupItemKey treeKeyType = 192
 
 	// Every block group is represented in the free space tree by a free space info
 	// item, which stores some accounting information. It is keyed on
 	// (block_group_start, FREE_SPACE_INFO, block_group_length).
-	freeSpaceInfoKey = 198
+	freeSpaceInfoKey treeKeyType = 198
 
 	// A free space extent tracks an extent of space that is free in a block group.
 	// It is keyed on (start, FREE_SPACE_EXTENT, length).
-	freeSpaceExtentKey = 199
+	freeSpaceExtentKey treeKeyType = 199
 
 	// When a block group becomes very fragmented, we convert it to use bitmaps
 	// instead of extents. A free space bitmap is keyed on
 	// (start, FREE_SPACE_BITMAP, length); the corresponding item is a bitmap with
 	// (length / sectorsize) bits.
-	freeSpaceBitmapKey = 200
+	freeSpaceBitmapKey treeKeyType = 200
 
-	devExtentKey = 204
-	devItemKey   = 216
-	chunkItemKey = 228
+	devExtentKey treeKeyType = 204
+	devItemKey   treeKeyType = 216
+	chunkItemKey treeKeyType = 228
 
 	// Records the overall state of the qgroups.
 	// There's only one instance of this key present,
 	// (0, BTRFS_QGROUP_STATUS_KEY, 0)
-	qgroupStatusKey = 240
+	qgroupStatusKey treeKeyType = 240
 	// Records the currently used space of the qgroup.
 	// One key per qgroup, (0, BTRFS_QGROUP_INFO_KEY, qgroupid).
-	qgroupInfoKey = 242
+	qgroupInfoKey treeKeyType = 242
 	// Contains the user configured limits for the qgroup.
 	// One key per qgroup, (0, BTRFS_QGROUP_LIMIT_KEY, qgroupid).
-	qgroupLimitKey = 244
+	qgroupLimitKey treeKeyType = 244
 	// Records the child-parent relationship of qgroups. For
 	// each relation, 2 keys are present:
 	// (childid, BTRFS_QGROUP_RELATION_KEY, parentid)
 	// (parentid, BTRFS_QGROUP_RELATION_KEY, childid)
-	qgroupRelationKey = 246
+	qgroupRelationKey treeKeyType = 246
 
 	// Obsolete name, see BTRFS_TEMPORARY_ITEM_KEY.
-	balanceItemKey = 248
+	balanceItemKey treeKeyType = 248
 
 	// The key type for tree items that are stored persistently, but do not need to
 	// exist for extended period of time. The items can exist in any tree.
@@ -189,10 +201,10 @@ const (
 	// Existing items:
 	// - balance status item
 	// (BTRFS_BALANCE_OBJECTID, BTRFS_TEMPORARY_ITEM_KEY, 0)
-	temporaryItemKey = 248
+	temporaryItemKey treeKeyType = 248
 
 	// Obsolete name, see BTRFS_PERSISTENT_ITEM_KEY
-	devStatsKey = 249
+	devStatsKey treeKeyType = 249
 
 	// The key type for tree items that are stored persistently and usually exist
 	// for a long period, eg. filesystem lifetime. The item kinds can be status
@@ -202,11 +214,11 @@ const (
 	// - device statistics, store IO stats in the device tree, one key for all
 	// stats
 	// (BTRFS_DEV_STATS_OBJECTID, BTRFS_DEV_STATS_KEY, 0)
-	persistentItemKey = 249
+	persistentItemKey treeKeyType = 249
 
 	// Persistantly stores the device replace state in the device tree.
 	// The key is built like this: (0, BTRFS_DEV_REPLACE_KEY, 0).
-	devReplaceKey = 250
+	devReplaceKey treeKeyType = 250
 
 	// Stores items that allow to quickly map UUIDs to something else.
 	// These items are part of the filesystem UUID tree.
@@ -217,7 +229,7 @@ const (
 
 	// String items are for debugging. They just store a short string of
 	// data in the FS
-	stringItemKey = 253
+	stringItemKey treeKeyType = 253
 
 	// 32 bytes in various csum fields
 	csumSize = 32
@@ -228,16 +240,16 @@ const (
 	// Flags definitions for directory entry item type
 	// Used by:
 	// struct btrfs_dir_item.type
-	ftUnknown = 0
-	ftRegFile = 1
-	ftDir     = 2
-	ftChrdev  = 3
-	ftBlkdev  = 4
-	ftFifo    = 5
-	ftSock    = 6
-	ftSymlink = 7
-	ftXattr   = 8
-	ftMax     = 9
+	ftUnknown fileType = 0
+	ftRegFile fileType = 1
+	ftDir     fileType = 2
+	ftChrdev  fileType = 3
+	ftBlkdev  fileType = 4
+	ftFifo    fileType = 5
+	ftSock    fileType = 6
+	ftSymlink fileType = 7
+	ftXattr   fileType = 8
+	ftMax     fileType = 9
 
 	// The key defines the order in the tree, and so it also defines (optimal)
 	// block layout.
@@ -392,9 +404,9 @@ const (
 	// resumed after crash or unmount
 	// BTRFS_BALANCE_*
 
-	fileExtentInline   = 0
-	fileExtentReg      = 1
-	fileExtentPrealloc = 2
+	fileExtentInline   fileExtentType = 0
+	fileExtentReg      fileExtentType = 1
+	fileExtentPrealloc fileExtentType = 2
 
 	// Transaction id that created this extent
 	// Max number of bytes to hold this extent in ram
@@ -425,27 +437,27 @@ const (
 	// Grow this item struct at the end for future enhancements and keep
 	// the existing values unchanged
 
-	devReplaceItemContReadingFromSrcdevModeAlways = 0
-	devReplaceItemContReadingFromSrcdevModeAvoid  = 1
-	devReplaceItemStateNeverStarted               = 0
-	devReplaceItemStateStarted                    = 1
-	devReplaceItemStateSuspended                  = 2
-	devReplaceItemStateFinished                   = 3
-	devReplaceItemStateCanceled                   = 4
+	devReplaceItemContReadingFromSrcdevModeAlways                     = 0
+	devReplaceItemContReadingFromSrcdevModeAvoid                      = 1
+	devReplaceItemStateNeverStarted               devReplaceItemState = 0
+	devReplaceItemStateStarted                    devReplaceItemState = 1
+	devReplaceItemStateSuspended                  devReplaceItemState = 2
+	devReplaceItemStateFinished                   devReplaceItemState = 3
+	devReplaceItemStateCanceled                   devReplaceItemState = 4
 
 	// Grow this item struct at the end for future enhancements and keep
 	// the existing values unchanged
 
 	// Different types of block groups (and chunks)
-	blockGroupData     = (1 << 0)
-	blockGroupSystem   = (1 << 1)
-	blockGroupMetadata = (1 << 2)
-	blockGroupRaid0    = (1 << 3)
-	blockGroupRaid1    = (1 << 4)
-	blockGroupDup      = (1 << 5)
-	blockGroupRaid10   = (1 << 6)
-	blockGroupRaid5    = (1 << 7)
-	blockGroupRaid6    = (1 << 8)
+	blockGroupData     blockGroup = (1 << 0)
+	blockGroupSystem   blockGroup = (1 << 1)
+	blockGroupMetadata blockGroup = (1 << 2)
+	blockGroupRaid0    blockGroup = (1 << 3)
+	blockGroupRaid1    blockGroup = (1 << 4)
+	blockGroupDup      blockGroup = (1 << 5)
+	blockGroupRaid10   blockGroup = (1 << 6)
+	blockGroupRaid5    blockGroup = (1 << 7)
+	blockGroupRaid6    blockGroup = (1 << 8)
 
 	// We need a bit for restriper to be able to tell when chunks of type
 	// SINGLE are available. This "extended" profile format is used in
