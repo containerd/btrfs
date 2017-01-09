@@ -225,12 +225,12 @@ func findGoodParent(mnt *os.File, rootID objectID, cloneSrc []objectID) (objectI
 		if err != nil {
 			return 0, err
 		}
-		diff := parent2.CTransID - parent.CTransID
+		diff := int64(parent2.CTransID - parent.CTransID)
 		if diff < 0 {
 			diff = -diff
 		}
-		if diff < bestDiff {
-			bestParent, bestDiff = parent2, diff
+		if uint64(diff) < bestDiff {
+			bestParent, bestDiff = parent2, uint64(diff)
 		}
 	}
 	if bestParent == nil {
