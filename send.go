@@ -191,7 +191,7 @@ func readRootItem(mnt *os.File, rootID objectID) (*rootItem, error) {
 	return nil, ErrNotFound
 }
 
-func getParent(mnt *os.File, rootID objectID) (*subvolInfo, error) {
+func getParent(mnt *os.File, rootID objectID) (*SubvolInfo, error) {
 	st, err := subvolSearchByRootID(mnt, rootID, "")
 	if err != nil {
 		return nil, err
@@ -210,7 +210,7 @@ func findGoodParent(mnt *os.File, rootID objectID, cloneSrc []objectID) (objectI
 		}
 	}
 	var (
-		bestParent *subvolInfo
+		bestParent *SubvolInfo
 		bestDiff   uint64 = maxUint64
 	)
 	for _, id := range cloneSrc {

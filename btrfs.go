@@ -203,23 +203,36 @@ func (f *FS) ReceiveTo(r io.Reader, mount string) error {
 	return Receive(r, filepath.Join(f.f.Name(), mount))
 }
 
-func (f *FS) ListSubvolumes(filter func(Subvolume) bool) ([]Subvolume, error) {
-	//root, err := getPathRootID(f)
-	//if err != nil {
-	//	return nil, fmt.Errorf("can't get rootid for '%s': %v", path, err)
-	//}
-	m, err := listSubVolumes(f.f)
+func (f *FS) ListSubvolumes(filter func(SubvolInfo) bool) ([]SubvolInfo, error) {
+	m, err := listSubVolumes(f.f, filter)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]Subvolume, 0, len(m))
+	out := make([]SubvolInfo, 0, len(m))
 	for _, v := range m {
-		if filter != nil && !filter(v) {
-			continue
-		}
 		out = append(out, v)
 	}
 	return out, nil
+}
+
+func (f *FS) SubvolumeByUUID(uuid UUID) (*SubvolInfo, error) {
+	id, err := lookupUUIDSubvolItem(f.f, uuid)
+	if err != nil {
+		return nil, err
+	}
+	return subvolSearchByRootID(f.f, id, "")
+}
+
+func (f *FS) SubvolumeByReceivedUUID(uuid UUID) (*SubvolInfo, error) {
+	id, err := lookupUUIDReceivedSubvolItem(f.f, uuid)
+	if err != nil {
+		return nil, err
+	}
+	return subvolSearchByRootID(f.f, id, "")
+}
+
+func (f *FS) SubvolumeByPath(path string) (*SubvolInfo, error) {
+	return subvolSearchByPath(f.f, path)
 }
 
 func (f *FS) Usage() (UsageInfo, error) { return spaceUsage(f.f) }

@@ -111,8 +111,8 @@ func TestSubvolumes(t *testing.T) {
 			if s.UUID.IsZero() {
 				t.Fatalf("zero uuid in %+v", s)
 			}
-			if s.Name != "" {
-				got = append(got, s.Name)
+			if s.Path != "" {
+				got = append(got, s.Path)
 			}
 		}
 		sort.Strings(got)
@@ -131,12 +131,12 @@ func TestSubvolumes(t *testing.T) {
 	}
 	expect([]string{
 		"foo", "bar", "baz",
-		"foo", "bar", "baz",
+		"foo/foo", "foo/bar", "foo/baz",
 	})
 	delsub("foo/bar")
 	expect([]string{
 		"foo", "bar", "baz",
-		"foo", "baz",
+		"foo/foo", "foo/baz",
 	})
 
 	path := filepath.Join(names[0], names[2])

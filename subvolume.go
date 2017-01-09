@@ -163,23 +163,7 @@ func GetFlags(path string) (SubvolFlags, error) {
 	return fs.GetFlags()
 }
 
-type Subvolume struct {
-	ObjectID     objectID
-	TransID      uint64
-	Name         string
-	RefTree      uint64
-	DirID        objectID
-	Gen          uint64
-	OGen         uint64
-	Flags        uint64
-	UUID         UUID
-	ParentUUID   UUID
-	ReceivedUUID UUID
-	OTime        time.Time
-	CTime        time.Time
-}
-
-func listSubVolumes(f *os.File) (map[objectID]Subvolume, error) {
+func listSubVolumes(f *os.File, filter func(SubvolInfo) bool) (map[objectID]SubvolInfo, error) {
 	sk := btrfs_ioctl_search_key{
 		// search in the tree of tree roots
 		tree_id: rootTreeObjectid,
@@ -199,7 +183,7 @@ func listSubVolumes(f *os.File) (map[objectID]Subvolume, error) {
 
 		nr_items: 4096, // just a big number, doesn't matter much
 	}
-	m := make(map[objectID]Subvolume)
+	m := make(map[objectID]SubvolInfo)
 	for {
 		out, err := treeSearchRaw(f, sk)
 		if err != nil {
@@ -209,28 +193,20 @@ func listSubVolumes(f *os.File) (map[objectID]Subvolume, error) {
 		}
 		for _, obj := range out {
 			switch obj.Type {
-			case rootBackrefKey:
-				ref := asRootRef(obj.Data)
-				o := m[obj.ObjectID]
-				o.TransID = obj.TransID
-				o.ObjectID = obj.ObjectID
-				o.RefTree = obj.Offset
-				o.DirID = ref.DirID
-				o.Name = ref.Name
-				m[obj.ObjectID] = o
+			//case rootBackrefKey:
+			//	ref := asRootRef(obj.Data)
+			//	o := m[obj.ObjectID]
+			//	o.TransID = obj.TransID
+			//	o.ObjectID = obj.ObjectID
+			//	o.RefTree = obj.Offset
+			//	o.DirID = ref.DirID
+			//	o.Name = ref.Name
+			//	m[obj.ObjectID] = o
 			case rootItemKey:
 				o := m[obj.ObjectID]
-				o.TransID = obj.TransID
-				o.ObjectID = obj.ObjectID
+				o.RootID = obj.ObjectID
 				robj := asRootItem(obj.Data).Decode()
-				o.Gen = robj.Gen
-				o.Flags = robj.Flags
-				o.CTime = robj.CTime
-				o.OTime = robj.OTime
-				o.OGen = robj.GenV2
-				o.UUID = robj.UUID
-				o.ParentUUID = robj.ParentUUID
-				o.ReceivedUUID = robj.ReceivedUUID
+				o.fillFromItem(&robj)
 				m[obj.ObjectID] = o
 			}
 		}
@@ -255,10 +231,26 @@ func listSubVolumes(f *os.File) (map[objectID]Subvolume, error) {
 			break
 		}
 	}
+	// resolve paths
+	for id, v := range m {
+		if path, err := subvolidResolve(f, id); err == ErrNotFound {
+			delete(m, id)
+			continue
+		} else if err != nil {
+			return m, fmt.Errorf("cannot resolve path for %v: %v", id, err)
+		} else {
+			v.Path = path
+			m[id] = v
+		}
+		if filter != nil && !filter(v) {
+			delete(m, id)
+		}
+	}
+
 	return m, nil
 }
 
-type subvolInfo struct {
+type SubvolInfo struct {
 	RootID objectID
 
 	UUID         UUID
@@ -278,7 +270,23 @@ type subvolInfo struct {
 	Path string
 }
 
-func subvolSearchByUUID(mnt *os.File, uuid UUID) (*subvolInfo, error) {
+func (s *SubvolInfo) fillFromItem(it *rootItem) {
+	s.UUID = it.UUID
+	s.ReceivedUUID = it.ReceivedUUID
+	s.ParentUUID = it.ParentUUID
+
+	s.CTime = it.CTime
+	s.OTime = it.OTime
+	s.STime = it.STime
+	s.RTime = it.RTime
+
+	s.CTransID = it.CTransID
+	s.OTransID = it.OTransID
+	s.STransID = it.STransID
+	s.RTransID = it.RTransID
+}
+
+func subvolSearchByUUID(mnt *os.File, uuid UUID) (*SubvolInfo, error) {
 	id, err := lookupUUIDSubvolItem(mnt, uuid)
 	if err != nil {
 		return nil, err
@@ -286,7 +294,7 @@ func subvolSearchByUUID(mnt *os.File, uuid UUID) (*subvolInfo, error) {
 	return subvolSearchByRootID(mnt, id, "")
 }
 
-func subvolSearchByReceivedUUID(mnt *os.File, uuid UUID) (*subvolInfo, error) {
+func subvolSearchByReceivedUUID(mnt *os.File, uuid UUID) (*SubvolInfo, error) {
 	id, err := lookupUUIDReceivedSubvolItem(mnt, uuid)
 	if err != nil {
 		return nil, err
@@ -294,7 +302,7 @@ func subvolSearchByReceivedUUID(mnt *os.File, uuid UUID) (*subvolInfo, error) {
 	return subvolSearchByRootID(mnt, id, "")
 }
 
-func subvolSearchByPath(mnt *os.File, path string) (*subvolInfo, error) {
+func subvolSearchByPath(mnt *os.File, path string) (*SubvolInfo, error) {
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(mnt.Name(), path)
 	}
@@ -354,30 +362,16 @@ func subvolidResolveSub(mnt *os.File, path string, subvolID objectID) (string, e
 // subvolSearchByRootID
 //
 // Path is optional, and will be resolved automatically if not set.
-func subvolSearchByRootID(mnt *os.File, rootID objectID, path string) (*subvolInfo, error) {
+func subvolSearchByRootID(mnt *os.File, rootID objectID, path string) (*SubvolInfo, error) {
 	robj, err := readRootItem(mnt, rootID)
 	if err != nil {
 		return nil, err
 	}
-	info := &subvolInfo{
+	info := &SubvolInfo{
 		RootID: rootID,
-
-		UUID:         robj.UUID,
-		ReceivedUUID: robj.ReceivedUUID,
-		ParentUUID:   robj.ParentUUID,
-
-		CTime: robj.CTime,
-		OTime: robj.OTime,
-		STime: robj.STime,
-		RTime: robj.RTime,
-
-		CTransID: robj.CTransID,
-		OTransID: robj.OTransID,
-		STransID: robj.STransID,
-		RTransID: robj.RTransID,
-
-		Path: path,
+		Path:   path,
 	}
+	info.fillFromItem(robj)
 	if path == "" {
 		info.Path, err = subvolidResolve(mnt, info.RootID)
 	}
