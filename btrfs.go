@@ -223,3 +223,9 @@ func (f *FS) ListSubvolumes(filter func(Subvolume) bool) ([]Subvolume, error) {
 }
 
 func (f *FS) Usage() (UsageInfo, error) { return spaceUsage(f.f) }
+
+func (f *FS) Balance(flags BalanceFlags) (BalanceProgress, error) {
+	args := btrfs_ioctl_balance_args{flags: flags}
+	err := iocBalanceV2(f.f, &args)
+	return args.stat, err
+}

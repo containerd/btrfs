@@ -277,29 +277,31 @@ type btrfs_balance_args struct {
 	_           [48]byte
 }
 
-// report balance progress to userspace
-type btrfs_balance_progress struct {
-	expected   uint64 // estimated # of chunks that will be relocated to fulfill the request
-	considered uint64 // # of chunks we have considered so far
-	completed  uint64 // # of chunks relocated so far
+// Report balance progress to userspace.
+//
+// btrfs_balance_progress
+type BalanceProgress struct {
+	Expected   uint64 // estimated # of chunks that will be relocated to fulfill the request
+	Considered uint64 // # of chunks we have considered so far
+	Completed  uint64 // # of chunks relocated so far
 }
 
-type balanceState uint64
+type BalanceState uint64
 
 const (
-	_BTRFS_BALANCE_STATE_RUNNING    balanceState = (1 << 0)
-	_BTRFS_BALANCE_STATE_PAUSE_REQ  balanceState = (1 << 1)
-	_BTRFS_BALANCE_STATE_CANCEL_REQ balanceState = (1 << 2)
+	BalanceStateRunning   BalanceState = (1 << 0)
+	BalanceStatePauseReq  BalanceState = (1 << 1)
+	BalanceStateCancelReq BalanceState = (1 << 2)
 )
 
 type btrfs_ioctl_balance_args struct {
-	flags uint64                 // in/out
-	state balanceState           // out
-	data  btrfs_balance_args     // in/out
-	meta  btrfs_balance_args     // in/out
-	sys   btrfs_balance_args     // in/out
-	stat  btrfs_balance_progress // out
-	_     [72 * 8]byte           // pad to 1k
+	flags BalanceFlags       // in/out
+	state BalanceState       // out
+	data  btrfs_balance_args // in/out
+	meta  btrfs_balance_args // in/out
+	sys   btrfs_balance_args // in/out
+	stat  BalanceProgress    // out
+	_     [72 * 8]byte       // pad to 1k
 }
 
 const _BTRFS_INO_LOOKUP_PATH_MAX = 4080
@@ -586,6 +588,7 @@ var (
 	_BTRFS_IOC_SCRUB_PROGRESS         = ioctl.IOWR(ioctlMagic, 29, unsafe.Sizeof(btrfs_ioctl_scrub_args{}))
 	_BTRFS_IOC_DEV_INFO               = ioctl.IOWR(ioctlMagic, 30, unsafe.Sizeof(btrfs_ioctl_dev_info_args{}))
 	_BTRFS_IOC_FS_INFO                = ioctl.IOR(ioctlMagic, 31, unsafe.Sizeof(btrfs_ioctl_fs_info_args{}))
+	_BTRFS_IOC_BALANCE_V2             = ioctl.IOWR(ioctlMagic, 32, unsafe.Sizeof(btrfs_ioctl_balance_args{}))
 	_BTRFS_IOC_BALANCE_CTL            = ioctl.IOW(ioctlMagic, 33, 4) // int32
 	_BTRFS_IOC_BALANCE_PROGRESS       = ioctl.IOR(ioctlMagic, 34, unsafe.Sizeof(btrfs_ioctl_balance_args{}))
 	_BTRFS_IOC_INO_PATHS              = ioctl.IOWR(ioctlMagic, 35, unsafe.Sizeof(btrfs_ioctl_ino_path_args{}))
@@ -600,8 +603,8 @@ var (
 	_BTRFS_IOC_QUOTA_RESCAN           = ioctl.IOW(ioctlMagic, 44, unsafe.Sizeof(btrfs_ioctl_quota_rescan_args{}))
 	_BTRFS_IOC_QUOTA_RESCAN_STATUS    = ioctl.IOR(ioctlMagic, 45, unsafe.Sizeof(btrfs_ioctl_quota_rescan_args{}))
 	_BTRFS_IOC_QUOTA_RESCAN_WAIT      = ioctl.IO(ioctlMagic, 46)
-	_BTRFS_IOC_GET_FSLABEL            = ioctl.IOR(ioctlMagic, 49, BTRFS_LABEL_SIZE)
-	_BTRFS_IOC_SET_FSLABEL            = ioctl.IOW(ioctlMagic, 50, BTRFS_LABEL_SIZE)
+	_BTRFS_IOC_GET_FSLABEL            = ioctl.IOR(ioctlMagic, 49, labelSize)
+	_BTRFS_IOC_SET_FSLABEL            = ioctl.IOW(ioctlMagic, 50, labelSize)
 	_BTRFS_IOC_GET_DEV_STATS          = ioctl.IOWR(ioctlMagic, 52, unsafe.Sizeof(btrfs_ioctl_get_dev_stats{}))
 	_BTRFS_IOC_DEV_REPLACE            = ioctl.IOWR(ioctlMagic, 53, unsafe.Sizeof(btrfs_ioctl_dev_replace_args_u1{}))
 	_BTRFS_IOC_FILE_EXTENT_SAME       = ioctl.IOWR(ioctlMagic, 54, unsafe.Sizeof(btrfs_ioctl_same_args{}))
@@ -783,6 +786,10 @@ func iocDevInfo(f *os.File, devid uint64, uuid UUID) (out btrfs_ioctl_dev_info_a
 	return
 }
 
+func iocBalanceV2(f *os.File, out *btrfs_ioctl_balance_args) error {
+	return ioctl.Do(f, _BTRFS_IOC_BALANCE_V2, out)
+}
+
 func iocBalanceCtl(f *os.File, out *int32) error {
 	return ioctl.Do(f, _BTRFS_IOC_BALANCE_CTL, out)
 }
@@ -839,11 +846,11 @@ func iocQuotaRescanWait(f *os.File) error {
 	return ioctl.Do(f, _BTRFS_IOC_QUOTA_RESCAN_WAIT, nil)
 }
 
-func iocGetFslabel(f *os.File, out *[BTRFS_LABEL_SIZE]byte) error {
+func iocGetFslabel(f *os.File, out *[labelSize]byte) error {
 	return ioctl.Do(f, _BTRFS_IOC_GET_FSLABEL, out)
 }
 
-func iocSetFslabel(f *os.File, out *[BTRFS_LABEL_SIZE]byte) error {
+func iocSetFslabel(f *os.File, out *[labelSize]byte) error {
 	return ioctl.Do(f, _BTRFS_IOC_SET_FSLABEL, out)
 }
 

@@ -25,7 +25,7 @@ var caseSizes = []struct {
 	{obj: btrfs_ioctl_fs_info_args{}, size: 1024},
 	{obj: btrfs_ioctl_feature_flags{}, size: 24},
 	{obj: btrfs_balance_args{}, size: 136},
-	{obj: btrfs_balance_progress{}, size: 24},
+	{obj: BalanceProgress{}, size: 24},
 	{obj: btrfs_ioctl_balance_args{}, size: 1024},
 	{obj: btrfs_ioctl_ino_lookup_args{}, size: 4096},
 	{obj: btrfs_ioctl_search_key{}, size: 104},
