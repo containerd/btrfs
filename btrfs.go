@@ -274,6 +274,7 @@ func SubvolSnapshot(dst, src string, readonly bool) error {
 	if err != nil {
 		return errors.Wrapf(err, "opening snapshot source subvolume failed")
 	}
+	defer srcfp.Close()
 
 	// dstdir is the ioctl arg, wile srcdir gets set on the args
 	var args C.struct_btrfs_ioctl_vol_args_v2
