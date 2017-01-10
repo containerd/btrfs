@@ -194,7 +194,7 @@ func readRootItem(mnt *os.File, rootID objectID) (*rootItem, error) {
 func getParent(mnt *os.File, rootID objectID) (*SubvolInfo, error) {
 	st, err := subvolSearchByRootID(mnt, rootID, "")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot find subvolume %d to determine parent: %v", rootID, err)
 	}
 	return subvolSearchByUUID(mnt, st.ParentUUID)
 }
@@ -215,7 +215,9 @@ func findGoodParent(mnt *os.File, rootID objectID, cloneSrc []objectID) (objectI
 	)
 	for _, id := range cloneSrc {
 		parent2, err := getParent(mnt, id)
-		if err != nil {
+		if err == ErrNotFound {
+			continue
+		} else if err != nil {
 			return 0, err
 		}
 		if parent2.RootID != parent.RootID {
@@ -233,8 +235,11 @@ func findGoodParent(mnt *os.File, rootID objectID, cloneSrc []objectID) (objectI
 			bestParent, bestDiff = parent2, uint64(diff)
 		}
 	}
-	if bestParent == nil {
-		return 0, ErrNotFound
+	if bestParent != nil {
+		return bestParent.RootID, nil
 	}
-	return bestParent.RootID, nil
+	if !parent.ParentUUID.IsZero() {
+		return findGoodParent(mnt, parent.RootID, cloneSrc)
+	}
+	return 0, ErrNotFound
 }
