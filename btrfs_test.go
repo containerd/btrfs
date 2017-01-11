@@ -3,6 +3,7 @@ package btrfs
 import (
 	"github.com/dennwc/btrfs/test"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -213,5 +214,64 @@ func TestCloneFile(t *testing.T) {
 	buf = buf[:n]
 	if string(buf) != data {
 		t.Fatalf("wrong data returned: %q", string(buf))
+	}
+}
+
+func TestResize(t *testing.T) {
+	dir, err := ioutil.TempDir("", "btrfs_data_")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	fname := filepath.Join(dir, "data")
+	if err = btrfstest.Mkfs(fname, sizeDef); err != nil {
+		t.Fatal(err)
+	}
+	mnt := filepath.Join(dir, "mnt")
+	if err = os.MkdirAll(mnt, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err = btrfstest.Mount(mnt, fname); err != nil {
+		t.Fatal(err)
+	}
+	defer btrfstest.Unmount(mnt)
+
+	fs, err := Open(mnt, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := fs.Usage()
+	fs.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err = btrfstest.Unmount(mnt); err != nil {
+		t.Fatal(err)
+	}
+	var newSize int64 = sizeDef
+	newSize = int64(float64(newSize) * 1.1)
+	if err = os.Truncate(fname, newSize); err != nil {
+		t.Fatal(err)
+	}
+	if err = btrfstest.Mount(mnt, fname); err != nil {
+		t.Fatal(err)
+	}
+
+	fs, err = Open(mnt, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fs.Close()
+
+	if err = fs.ResizeToMax(); err != nil {
+		t.Fatal(err)
+	}
+
+	st2, err := fs.Usage()
+	if err != nil {
+		t.Fatal(err)
+	} else if st.Total >= st2.Total {
+		t.Fatal("to resized:", st.Total, st2.Total)
 	}
 }

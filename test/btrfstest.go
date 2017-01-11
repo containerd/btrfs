@@ -52,6 +52,21 @@ func Mount(mount string, file string) error {
 	return nil
 }
 
+func Unmount(mount string) error {
+	for i := 0; i < 5; i++ {
+		if err := run("umount", mount); err == nil {
+			break
+		} else {
+			if strings.Contains(err.Error(), "busy") {
+				time.Sleep(time.Second)
+			} else {
+				break
+			}
+		}
+	}
+	return nil
+}
+
 func New(t testing.TB, size int64) (string, func()) {
 	f, err := ioutil.TempFile("", "btrfs_vol")
 	if err != nil {
@@ -85,17 +100,8 @@ func New(t testing.TB, size int64) (string, func()) {
 		if done {
 			return
 		}
-		for i := 0; i < 5; i++ {
-			if err := run("umount", mount); err == nil {
-				break
-			} else {
-				log.Println("umount failed:", err)
-				if strings.Contains(err.Error(), "busy") {
-					time.Sleep(time.Second)
-				} else {
-					break
-				}
-			}
+		if err := Unmount(mount); err != nil {
+			log.Println("umount failed:", err)
 		}
 		if err := os.Remove(mount); err != nil {
 			log.Println("cleanup failed:", err)

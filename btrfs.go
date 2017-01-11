@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"syscall"
 )
 
@@ -241,4 +242,23 @@ func (f *FS) Balance(flags BalanceFlags) (BalanceProgress, error) {
 	args := btrfs_ioctl_balance_args{flags: flags}
 	err := iocBalanceV2(f.f, &args)
 	return args.stat, err
+}
+
+func (f *FS) Resize(size int64) error {
+	amount := strconv.FormatInt(size, 10)
+	args := &btrfs_ioctl_vol_args{}
+	args.SetName(amount)
+	if err := iocResize(f.f, args); err != nil {
+		return fmt.Errorf("resize failed: %v", err)
+	}
+	return nil
+}
+
+func (f *FS) ResizeToMax() error {
+	args := &btrfs_ioctl_vol_args{}
+	args.SetName("max")
+	if err := iocResize(f.f, args); err != nil {
+		return fmt.Errorf("resize failed: %v", err)
+	}
+	return nil
 }

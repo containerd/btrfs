@@ -60,6 +60,11 @@ type btrfs_ioctl_vol_args struct {
 	name [volNameMax + 1]byte
 }
 
+func (arg *btrfs_ioctl_vol_args) SetName(name string) {
+	n := copy(arg.name[:], name)
+	arg.name[n] = 0
+}
+
 type btrfs_qgroup_limit struct {
 	flags          uint64
 	max_referenced uint64
@@ -625,8 +630,8 @@ func iocDefrag(f *os.File, out *btrfs_ioctl_vol_args) error {
 	return ioctl.Do(f, _BTRFS_IOC_DEFRAG, out)
 }
 
-func iocResize(f *os.File, out *btrfs_ioctl_vol_args) error {
-	return ioctl.Do(f, _BTRFS_IOC_RESIZE, out)
+func iocResize(f *os.File, in *btrfs_ioctl_vol_args) error {
+	return ioctl.Do(f, _BTRFS_IOC_RESIZE, in)
 }
 
 func iocScanDev(f *os.File, out *btrfs_ioctl_vol_args) error {
