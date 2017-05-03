@@ -7,7 +7,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/stevvooe/go-btrfs"
+	"github.com/containerd/btrfs"
 )
 
 var (
