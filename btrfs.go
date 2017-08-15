@@ -49,6 +49,17 @@ func IsSubvolume(path string) error {
 	return isStatfsSubvol(&statfs)
 }
 
+// SubvolID returns the subvolume ID for the provided path
+func SubvolID(path string) (uint64, error) {
+	fp, err := openSubvolDir(path)
+	if err != nil {
+		return 0, err
+	}
+	defer fp.Close()
+
+	return subvolID(fp.Fd())
+}
+
 // SubvolInfo returns information about the subvolume at the provided path.
 func SubvolInfo(path string) (info Info, err error) {
 	path, err = filepath.EvalSymlinks(path)
