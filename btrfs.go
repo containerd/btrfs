@@ -3,8 +3,6 @@ package btrfs
 import "sort"
 
 /*
-#cgo LDFLAGS: -lbtrfs
-
 #include <stddef.h>
 #include <btrfs/ioctl.h>
 #include "btrfs.h"
@@ -20,7 +18,6 @@ static char* get_name_btrfs_ioctl_vol_args_v2(struct btrfs_ioctl_vol_args_v2* bt
 import "C"
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -301,7 +298,6 @@ func SubvolSnapshot(dst, src string, readonly bool) error {
 
 // SubvolDelete deletes the subvolumes under the given path.
 func SubvolDelete(path string) error {
-	fmt.Println("delete", path)
 	dir, name := filepath.Split(path)
 	fp, err := openSubvolDir(dir)
 	if err != nil {
