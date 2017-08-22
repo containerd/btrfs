@@ -81,13 +81,13 @@ func SubvolInfo(path string) (info Info, err error) {
 	}
 
 	if info, ok := subvolsByID[id]; ok {
-		return info, nil
+		return *info, nil
 	}
 
 	return info, errors.Errorf("%q not found", path)
 }
 
-func subvolMap(path string) (map[uint64]Info, error) {
+func subvolMap(path string) (map[uint64]*Info, error) {
 	fp, err := openSubvolDir(path)
 	if err != nil {
 		return nil, err
@@ -104,7 +104,7 @@ func subvolMap(path string) (map[uint64]Info, error) {
 	args.key.max_offset = C.negative_one
 	args.key.max_transid = C.negative_one
 
-	subvolsByID := map[uint64]Info{}
+	subvolsByID := make(map[uint64]*Info)
 
 	for {
 		args.key.nr_items = 4096
@@ -127,6 +127,9 @@ func subvolMap(path string) (map[uint64]Info, error) {
 			buf = buf[shSize:]
 
 			info := subvolsByID[uint64(sh.objectid)]
+			if info == nil {
+				info = &Info{}
+			}
 			info.ID = uint64(sh.objectid)
 
 			if sh._type == C.BTRFS_ROOT_BACKREF_KEY {
@@ -233,7 +236,7 @@ func SubvolList(path string) ([]Info, error) {
 
 	subvols := make([]Info, 0, len(subvolsByID))
 	for _, sv := range subvolsByID {
-		subvols = append(subvols, sv)
+		subvols = append(subvols, *sv)
 	}
 
 	sort.Sort(infosByID(subvols))
