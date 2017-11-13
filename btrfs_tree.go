@@ -1,6 +1,7 @@
 package btrfs
 
 import (
+	"fmt"
 	"time"
 	"unsafe"
 )
@@ -50,6 +51,54 @@ func asRootRef(p []byte) rootRef {
 		ref.Name = string(p[sz : sz+n : sz+n])
 	}
 	return ref
+}
+
+var treeKeyNames = map[treeKeyType]string{
+	inodeItemKey:          "inodeItem",
+	inodeRefKey:           "inodeRef",
+	inodeExtrefKey:        "inodeExtref",
+	xattrItemKey:          "xattrItemKey",
+	orphanItemKey:         "orphanItem",
+	dirLogItemKey:         "dirLogItem",
+	dirLogIndexKey:        "dirLogIndex",
+	dirItemKey:            "dirItem",
+	dirIndexKey:           "dirIndex",
+	extentDataKey:         "extentData",
+	extentCsumKey:         "extentCsum",
+	rootItemKey:           "rootItem",
+	rootBackrefKey:        "rootBackref",
+	rootRefKey:            "rootRef",
+	extentItemKey:         "extentItem",
+	metadataItemKey:       "metadataItem",
+	treeBlockRefKey:       "treeBlockRef",
+	extentDataRefKey:      "extentDataRef",
+	extentRefV0Key:        "extentRefV0",
+	sharedBlockRefKey:     "sharedBlockRef",
+	sharedDataRefKey:      "sharedDataRef",
+	blockGroupItemKey:     "blockGroupItem",
+	freeSpaceInfoKey:      "freeSpaceInfo",
+	freeSpaceExtentKey:    "freeSpaceExtent",
+	freeSpaceBitmapKey:    "freeSpaceBitmap",
+	devExtentKey:          "devExtent",
+	devItemKey:            "devItem",
+	chunkItemKey:          "chunkItem",
+	qgroupStatusKey:       "qgroupStatus",
+	qgroupInfoKey:         "qgroupInfo",
+	qgroupLimitKey:        "qgroupLimit",
+	qgroupRelationKey:     "qgroupRelation",
+	temporaryItemKey:      "temporaryItem",
+	persistentItemKey:     "persistentItem",
+	devReplaceKey:         "devReplace",
+	uuidKeySubvol:         "uuidKeySubvol",
+	uuidKeyReceivedSubvol: "uuidKeyReceivedSubvol",
+	stringItemKey:         "stringItem",
+}
+
+func (t treeKeyType) String() string {
+	if name, ok := treeKeyNames[t]; ok {
+		return name
+	}
+	return fmt.Sprintf("%#x", int(t))
 }
 
 // btrfs_disk_key_raw is a raw bytes for btrfs_disk_key structure

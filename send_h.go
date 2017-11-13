@@ -3,17 +3,20 @@ package btrfs
 import (
 	"encoding/binary"
 	"io"
+	"strconv"
+)
+
+var sendEndianess = binary.LittleEndian
+
+const (
+	sendStreamMagic     = "btrfs-stream\x00"
+	sendStreamMagicSize = len(sendStreamMagic)
+	sendStreamVersion   = 1
 )
 
 const (
-	_BTRFS_SEND_STREAM_MAGIC   = "btrfs-stream"
-	sendStreamMagicSize        = len(_BTRFS_SEND_STREAM_MAGIC)
-	_BTRFS_SEND_STREAM_VERSION = 1
-)
-
-const (
-	_BTRFS_SEND_BUF_SIZE  = 64 * 1024
-	_BTRFS_SEND_READ_SIZE = 48 * 1024
+	sendBufSize  = 64 * 1024
+	sendReadSize = 48 * 1024
 )
 
 type tlvType uint16
@@ -30,115 +33,211 @@ const (
 )
 
 type streamHeader struct {
-	Magic   [len(_BTRFS_SEND_STREAM_MAGIC)]byte
+	Magic   [sendStreamMagicSize]byte
 	Version uint32
 }
 
+const cmdHeaderSize = 10
+
 type cmdHeader struct {
 	Len uint32 // len excluding the header
-	Cmd uint16
+	Cmd sendCmd
 	Crc uint32 // crc including the header with zero crc field
 }
 
-func (h *cmdHeader) Size() int { return 10 }
+func (h *cmdHeader) Size() int { return cmdHeaderSize }
 func (h *cmdHeader) Unmarshal(p []byte) error {
-	if len(p) < h.Size() {
+	if len(p) < cmdHeaderSize {
 		return io.ErrUnexpectedEOF
 	}
-	h.Len = binary.LittleEndian.Uint32(p[0:])
-	h.Cmd = binary.LittleEndian.Uint16(p[4:])
-	h.Crc = binary.LittleEndian.Uint32(p[6:])
+	h.Len = sendEndianess.Uint32(p[0:])
+	h.Cmd = sendCmd(sendEndianess.Uint16(p[4:]))
+	h.Crc = sendEndianess.Uint32(p[6:])
 	return nil
 }
 
+const tlvHeaderSize = 4
+
 type tlvHeader struct {
-	Type tlvType
+	Type uint16
 	Len  uint16 // len excluding the header
 }
 
-func (h *tlvHeader) Size() int { return 4 }
+func (h *tlvHeader) Size() int { return tlvHeaderSize }
 func (h *tlvHeader) Unmarshal(p []byte) error {
-	if len(p) < h.Size() {
+	if len(p) < tlvHeaderSize {
 		return io.ErrUnexpectedEOF
 	}
-	h.Type = tlvType(binary.LittleEndian.Uint16(p[0:]))
-	h.Len = binary.LittleEndian.Uint16(p[2:])
+	h.Type = sendEndianess.Uint16(p[0:])
+	h.Len = sendEndianess.Uint16(p[2:])
 	return nil
 }
 
 type sendCmd uint16
 
+func (c sendCmd) String() string {
+	var name string
+	if int(c) < len(sendCmdTypeNames) {
+		name = sendCmdTypeNames[int(c)]
+	}
+	if name != "" {
+		return name
+	}
+	return strconv.FormatInt(int64(c), 16)
+}
+
+var sendCmdTypeNames = []string{
+	"<zero>",
+
+	"subvol",
+	"snapshot",
+
+	"mkfile",
+	"mkdir",
+	"mknod",
+	"mkfifo",
+	"mksock",
+	"symlink",
+
+	"rename",
+	"link",
+	"unlink",
+	"rmdir",
+
+	"set_xattr",
+	"remove_xattr",
+
+	"write",
+	"clone",
+
+	"truncate",
+	"chmod",
+	"chown",
+	"utimes",
+
+	"end",
+	"update_extent",
+	"<max>",
+}
+
 const (
-	_BTRFS_SEND_C_UNSPEC = sendCmd(iota)
+	sendCmdUnspec = sendCmd(iota)
 
-	_BTRFS_SEND_C_SUBVOL
-	_BTRFS_SEND_C_SNAPSHOT
+	sendCmdSubvol
+	sendCmdSnapshot
 
-	_BTRFS_SEND_C_MKFILE
-	_BTRFS_SEND_C_MKDIR
-	_BTRFS_SEND_C_MKNOD
-	_BTRFS_SEND_C_MKFIFO
-	_BTRFS_SEND_C_MKSOCK
-	_BTRFS_SEND_C_SYMLINK
+	sendCmdMkfile
+	sendCmdMkdir
+	sendCmdMknod
+	sendCmdMkfifo
+	sendCmdMksock
+	sendCmdSymlink
 
-	_BTRFS_SEND_C_RENAME
-	_BTRFS_SEND_C_LINK
-	_BTRFS_SEND_C_UNLINK
-	_BTRFS_SEND_C_RMDIR
+	sendCmdRename
+	sendCmdLink
+	sendCmdUnlink
+	sendCmdRmdir
 
-	_BTRFS_SEND_C_SET_XATTR
-	_BTRFS_SEND_C_REMOVE_XATTR
+	sendCmdSetXattr
+	sendCmdRemoveXattr
 
-	_BTRFS_SEND_C_WRITE
-	_BTRFS_SEND_C_CLONE
+	sendCmdWrite
+	sendCmdClone
 
-	_BTRFS_SEND_C_TRUNCATE
-	_BTRFS_SEND_C_CHMOD
-	_BTRFS_SEND_C_CHOWN
-	_BTRFS_SEND_C_UTIMES
+	sendCmdTruncate
+	sendCmdChmod
+	sendCmdChown
+	sendCmdUtimes
 
-	_BTRFS_SEND_C_END
-	_BTRFS_SEND_C_UPDATE_EXTENT
-	__BTRFS_SEND_C_MAX
+	sendCmdEnd
+	sendCmdUpdateExtent
+	_sendCmdMax
 )
 
-const _BTRFS_SEND_C_MAX = __BTRFS_SEND_C_MAX - 1
+const sendCmdMax = _sendCmdMax - 1
 
 type sendCmdAttr uint16
 
+func (c sendCmdAttr) String() string {
+	var name string
+	if int(c) < len(sendAttrNames) {
+		name = sendAttrNames[int(c)]
+	}
+	if name != "" {
+		return name
+	}
+	return strconv.FormatInt(int64(c), 16)
+}
+
 const (
-	_BTRFS_SEND_A_UNSPEC = iota
+	sendAttrUnspec = sendCmdAttr(iota)
 
-	_BTRFS_SEND_A_UUID
-	_BTRFS_SEND_A_CTRANSID
+	sendAttrUuid
+	sendAttrCtransid
 
-	_BTRFS_SEND_A_INO
-	_BTRFS_SEND_A_SIZE
-	_BTRFS_SEND_A_MODE
-	_BTRFS_SEND_A_UID
-	_BTRFS_SEND_A_GID
-	_BTRFS_SEND_A_RDEV
-	_BTRFS_SEND_A_CTIME
-	_BTRFS_SEND_A_MTIME
-	_BTRFS_SEND_A_ATIME
-	_BTRFS_SEND_A_OTIME
+	sendAttrIno
+	sendAttrSize
+	sendAttrMode
+	sendAttrUid
+	sendAttrGid
+	sendAttrRdev
+	sendAttrCtime
+	sendAttrMtime
+	sendAttrAtime
+	sendAttrOtime
 
-	_BTRFS_SEND_A_XATTR_NAME
-	_BTRFS_SEND_A_XATTR_DATA
+	sendAttrXattrName
+	sendAttrXattrData
 
-	_BTRFS_SEND_A_PATH
-	_BTRFS_SEND_A_PATH_TO
-	_BTRFS_SEND_A_PATH_LINK
+	sendAttrPath
+	sendAttrPathTo
+	sendAttrPathLink
 
-	_BTRFS_SEND_A_FILE_OFFSET
-	_BTRFS_SEND_A_DATA
+	sendAttrFileOffset
+	sendAttrData
 
-	_BTRFS_SEND_A_CLONE_UUID
-	_BTRFS_SEND_A_CLONE_CTRANSID
-	_BTRFS_SEND_A_CLONE_PATH
-	_BTRFS_SEND_A_CLONE_OFFSET
-	_BTRFS_SEND_A_CLONE_LEN
+	sendAttrCloneUuid
+	sendAttrCloneCtransid
+	sendAttrClonePath
+	sendAttrCloneOffset
+	sendAttrCloneLen
 
-	__BTRFS_SEND_A_MAX
+	_sendAttrMax
 )
-const _BTRFS_SEND_A_MAX = __BTRFS_SEND_A_MAX - 1
+const sendAttrMax = _sendAttrMax - 1
+
+var sendAttrNames = []string{
+	"<zero>",
+
+	"uuid",
+	"ctransid",
+
+	"ino",
+	"size",
+	"mode",
+	"uid",
+	"gid",
+	"rdev",
+	"ctime",
+	"mtime",
+	"atime",
+	"otime",
+
+	"xattrname",
+	"xattrdata",
+
+	"path",
+	"pathto",
+	"pathlink",
+
+	"fileoffset",
+	"data",
+
+	"cloneuuid",
+	"clonectransid",
+	"clonepath",
+	"cloneoffset",
+	"clonelen",
+
+	"<max>",
+}

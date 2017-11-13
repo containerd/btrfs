@@ -66,7 +66,7 @@ type streamReader struct {
 	buf  *bytes.Buffer
 }
 type sendCommandArgs struct {
-	Type tlvType
+	Type sendCmdAttr
 	Data []byte
 }
 type sendCommand struct {
@@ -110,12 +110,12 @@ func (sr *streamReader) ReadCommand() (*sendCommand, error) {
 			return nil, err
 		}
 		data = data[th.Size():]
-		if th.Type > _BTRFS_SEND_A_MAX { // || th.Len > _BTRFS_SEND_BUF_SIZE {
+		if sendCmdAttr(th.Type) > sendAttrMax { // || th.Len > _BTRFS_SEND_BUF_SIZE {
 			return nil, fmt.Errorf("invalid tlv in cmd: %+v", th)
 		}
 		b := make([]byte, th.Len)
 		copy(b, data)
-		cmd.Args = append(cmd.Args, sendCommandArgs{Type: th.Type, Data: b})
+		cmd.Args = append(cmd.Args, sendCommandArgs{Type: sendCmdAttr(th.Type), Data: b})
 	}
 	return &cmd, nil
 }
@@ -125,11 +125,11 @@ func newStreamReader(r io.Reader) (*streamReader, error) {
 	_, err := io.ReadFull(r, buf)
 	if err != nil {
 		return nil, err
-	} else if bytes.Compare(buf[:sendStreamMagicSize], []byte(_BTRFS_SEND_STREAM_MAGIC)) != 0 {
+	} else if bytes.Compare(buf[:sendStreamMagicSize], []byte(sendStreamMagic)) != 0 {
 		return nil, errors.New("unexpected stream header")
 	}
 	version := binary.LittleEndian.Uint32(buf[sendStreamMagicSize:])
-	if version > _BTRFS_SEND_STREAM_VERSION {
+	if version > sendStreamVersion {
 		return nil, fmt.Errorf("stream version %d not supported", version)
 	}
 	return &streamReader{r: r}, nil

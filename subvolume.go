@@ -141,7 +141,7 @@ func SnapshotSubVolume(subvol, dst string, ro bool) error {
 	//}
 	copy(args.name[:], newName)
 	if err := iocSnapCreateV2(fdst, &args); err != nil {
-		return fmt.Errorf("ioc failed: %v", err)
+		return fmt.Errorf("snapshot create failed: %v", err)
 	}
 	return nil
 }
