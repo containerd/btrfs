@@ -1,4 +1,4 @@
-package btrfs
+package send
 
 import (
 	"encoding/binary"
@@ -19,29 +19,11 @@ const (
 	sendReadSize = 48 * 1024
 )
 
-type tlvType uint16
-
-const (
-	tlvU8 = tlvType(iota)
-	tlvU16
-	tlvU32
-	tlvU64
-	tlvBinary
-	tlvString
-	tlvUUID
-	tlvTimespec
-)
-
-type streamHeader struct {
-	Magic   [sendStreamMagicSize]byte
-	Version uint32
-}
-
 const cmdHeaderSize = 10
 
 type cmdHeader struct {
 	Len uint32 // len excluding the header
-	Cmd sendCmd
+	Cmd CmdType
 	Crc uint32 // crc including the header with zero crc field
 }
 
@@ -51,7 +33,7 @@ func (h *cmdHeader) Unmarshal(p []byte) error {
 		return io.ErrUnexpectedEOF
 	}
 	h.Len = sendEndianess.Uint32(p[0:])
-	h.Cmd = sendCmd(sendEndianess.Uint16(p[4:]))
+	h.Cmd = CmdType(sendEndianess.Uint16(p[4:]))
 	h.Crc = sendEndianess.Uint32(p[6:])
 	return nil
 }
@@ -73,12 +55,12 @@ func (h *tlvHeader) Unmarshal(p []byte) error {
 	return nil
 }
 
-type sendCmd uint16
+type CmdType uint16
 
-func (c sendCmd) String() string {
+func (c CmdType) String() string {
 	var name string
-	if int(c) < len(sendCmdTypeNames) {
-		name = sendCmdTypeNames[int(c)]
+	if int(c) < len(cmdTypeNames) {
+		name = cmdTypeNames[int(c)]
 	}
 	if name != "" {
 		return name
@@ -86,7 +68,7 @@ func (c sendCmd) String() string {
 	return strconv.FormatInt(int64(c), 16)
 }
 
-var sendCmdTypeNames = []string{
+var cmdTypeNames = []string{
 	"<zero>",
 
 	"subvol",
@@ -121,7 +103,7 @@ var sendCmdTypeNames = []string{
 }
 
 const (
-	sendCmdUnspec = sendCmd(iota)
+	sendCmdUnspec = CmdType(iota)
 
 	sendCmdSubvol
 	sendCmdSnapshot

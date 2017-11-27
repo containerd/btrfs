@@ -2,10 +2,7 @@ package btrfs
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
-	"fmt"
-	"hash/crc32"
 	"io"
 	"os"
 	"os/exec"
@@ -52,85 +49,10 @@ func Receive(r io.Reader, dstDir string) error {
 	if err != nil {
 		return err
 	}
-	sr, err := newStreamReader(r)
-	if err != nil {
-		return err
-	}
-	_, _, _ = dir, subvolID, sr
+	//sr, err := send.NewStreamReader(r)
+	//if err != nil {
+	//	return err
+	//}
+	_, _ = dir, subvolID
 	panic("not implemented")
-}
-
-type streamReader struct {
-	r    io.Reader
-	hbuf []byte
-	buf  *bytes.Buffer
-}
-type sendCommandArgs struct {
-	Type sendCmdAttr
-	Data []byte
-}
-type sendCommand struct {
-	Type sendCmd
-	Args []sendCommandArgs
-}
-
-func (sr *streamReader) ReadCommand() (*sendCommand, error) {
-	sr.buf.Reset()
-	var h cmdHeader
-	if sr.hbuf == nil {
-		sr.hbuf = make([]byte, h.Size())
-	}
-	if _, err := io.ReadFull(sr.r, sr.hbuf); err != nil {
-		return nil, err
-	} else if err = h.Unmarshal(sr.hbuf); err != nil {
-		return nil, err
-	}
-	if sr.buf == nil {
-		sr.buf = bytes.NewBuffer(nil)
-	}
-	if _, err := io.CopyN(sr.buf, sr.r, int64(h.Len)); err != nil {
-		return nil, err
-	}
-	tbl := crc32.MakeTable(0)
-	crc := crc32.Checksum(sr.buf.Bytes(), tbl)
-	if crc != h.Crc {
-		return nil, fmt.Errorf("crc missmatch in command: %x vs %x", crc, h.Crc)
-	}
-	cmd := sendCommand{Type: sendCmd(h.Cmd)}
-	var th tlvHeader
-	data := sr.buf.Bytes()
-	for {
-		if n := len(data); n < th.Size() {
-			if n != 0 {
-				return nil, io.ErrUnexpectedEOF
-			}
-			break
-		}
-		if err := th.Unmarshal(data); err != nil {
-			return nil, err
-		}
-		data = data[th.Size():]
-		if sendCmdAttr(th.Type) > sendAttrMax { // || th.Len > _BTRFS_SEND_BUF_SIZE {
-			return nil, fmt.Errorf("invalid tlv in cmd: %+v", th)
-		}
-		b := make([]byte, th.Len)
-		copy(b, data)
-		cmd.Args = append(cmd.Args, sendCommandArgs{Type: sendCmdAttr(th.Type), Data: b})
-	}
-	return &cmd, nil
-}
-
-func newStreamReader(r io.Reader) (*streamReader, error) {
-	buf := make([]byte, sendStreamMagicSize+4)
-	_, err := io.ReadFull(r, buf)
-	if err != nil {
-		return nil, err
-	} else if bytes.Compare(buf[:sendStreamMagicSize], []byte(sendStreamMagic)) != 0 {
-		return nil, errors.New("unexpected stream header")
-	}
-	version := binary.LittleEndian.Uint32(buf[sendStreamMagicSize:])
-	if version > sendStreamVersion {
-		return nil, fmt.Errorf("stream version %d not supported", version)
-	}
-	return &streamReader{r: r}, nil
 }
