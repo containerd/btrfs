@@ -59,6 +59,22 @@ func main() {
 		}
 
 		fmt.Printf("%#v\n", info)
+	case "quota-enable":
+		if err := btrfs.QuotaCtl(os.Args[2], true); err != nil {
+			log.Fatalln(err)
+		}
+	case "quota-disable":
+		if err := btrfs.QuotaCtl(os.Args[2], false); err != nil {
+			log.Fatalln(err)
+		}
+	case "qgroup-show":
+		items, err := btrfs.QGroupInfo(os.Args[2])
+		if err != nil {
+			log.Fatalln(err)
+		}
+		for _, item := range items {
+			log.Printf("%+v", item)
+		}
 	default:
 		log.Fatal("unknown command", os.Args[1])
 	}
