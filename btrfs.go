@@ -2,7 +2,7 @@ package btrfs
 
 import (
 	"fmt"
-	"github.com/dennwc/btrfs/ioctl"
+	"github.com/dennwc/ioctl"
 	"io"
 	"os"
 	"path/filepath"

@@ -1,82 +1,61 @@
 package ioctl
 
 import (
-	"fmt"
+	"github.com/dennwc/ioctl"
 	"os"
-	"reflect"
-	"syscall"
 )
 
 const (
-	nrBits   = 8
-	typeBits = 8
-	sizeBits = 14
-	dirBits  = 2
+	None  = ioctl.None
+	Write = ioctl.Write
+	Read  = ioctl.Read
 )
 
-const (
-	nrMask   = ((1 << nrBits) - 1)
-	typeMask = ((1 << typeBits) - 1)
-	sizeMask = ((1 << sizeBits) - 1)
-	dirMask  = ((1 << dirBits) - 1)
-)
-
-const (
-	nrShift   = 0
-	typeShift = (nrShift + nrBits)
-	sizeShift = (typeShift + typeBits)
-	dirShift  = (sizeShift + sizeBits)
-)
-
-const (
-	None  = 0
-	Write = 1
-	Read  = 2
-)
-
+// IOC
+//
+// Deprecated: use github/dennwc/ioctl
 func IOC(dir, typ, nr, size uintptr) uintptr {
-	return (dir << dirShift) |
-		(typ << typeShift) |
-		(nr << nrShift) |
-		(size << sizeShift)
+	return ioctl.IOC(dir, typ, nr, size)
 }
 
+// IO
+//
+// Deprecated: use github/dennwc/ioctl
 func IO(typ, nr uintptr) uintptr {
-	return IOC(None, typ, nr, 0)
+	return ioctl.IO(typ, nr)
 }
 
+// IOC
+//
+// Deprecated: use github/dennwc/ioctl
 func IOR(typ, nr, size uintptr) uintptr {
-	return IOC(Read, typ, nr, size)
+	return ioctl.IOR(typ, nr, size)
 }
 
+// IOW
+//
+// Deprecated: use github/dennwc/ioctl
 func IOW(typ, nr, size uintptr) uintptr {
-	return IOC(Write, typ, nr, size)
+	return ioctl.IOW(typ, nr, size)
 }
 
+// IOWR
+//
+// Deprecated: use github/dennwc/ioctl
 func IOWR(typ, nr, size uintptr) uintptr {
-	return IOC(Read|Write, typ, nr, size)
+	return ioctl.IOWR(typ, nr, size)
 }
 
+// Ioctl
+//
+// Deprecated: use github/dennwc/ioctl
 func Ioctl(f *os.File, ioc uintptr, addr uintptr) error {
-	_, _, e := syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), ioc, addr)
-	if e != 0 {
-		return e
-	}
-	return nil
+	return ioctl.Ioctl(f, ioc, addr)
 }
 
+// Do
+//
+// Deprecated: use github/dennwc/ioctl
 func Do(f *os.File, ioc uintptr, arg interface{}) error {
-	var addr uintptr
-	if arg != nil {
-		v := reflect.ValueOf(arg)
-		switch v.Kind() {
-		case reflect.Ptr:
-			addr = v.Elem().UnsafeAddr()
-		case reflect.Slice:
-			addr = v.Index(0).UnsafeAddr()
-		default:
-			return fmt.Errorf("expected ptr or slice, got %T")
-		}
-	}
-	return Ioctl(f, ioc, addr)
+	return ioctl.Do(f, ioc, arg)
 }

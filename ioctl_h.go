@@ -3,7 +3,7 @@ package btrfs
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"github.com/dennwc/btrfs/ioctl"
+	"github.com/dennwc/ioctl"
 	"os"
 	"strconv"
 	"strings"
