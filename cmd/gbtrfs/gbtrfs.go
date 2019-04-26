@@ -1,10 +1,11 @@
-package main
+package gbtrfs
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/dennwc/btrfs"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 func init() {
