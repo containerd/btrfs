@@ -204,7 +204,7 @@ func listSubVolumes(f *os.File, filter func(SubvolInfo) bool) (map[objectID]Subv
 			//	m[obj.ObjectID] = o
 			case rootItemKey:
 				o := m[obj.ObjectID]
-				o.RootID = obj.ObjectID
+				o.RootID = uint64(obj.ObjectID)
 				robj := asRootItem(obj.Data).Decode()
 				o.fillFromItem(&robj)
 				m[obj.ObjectID] = o
@@ -251,7 +251,7 @@ func listSubVolumes(f *os.File, filter func(SubvolInfo) bool) (map[objectID]Subv
 }
 
 type SubvolInfo struct {
-	RootID objectID
+	RootID uint64
 
 	UUID         UUID
 	ParentUUID   UUID
@@ -368,12 +368,12 @@ func subvolSearchByRootID(mnt *os.File, rootID objectID, path string) (*SubvolIn
 		return nil, err
 	}
 	info := &SubvolInfo{
-		RootID: rootID,
+		RootID: uint64(rootID),
 		Path:   path,
 	}
 	info.fillFromItem(robj)
 	if path == "" {
-		info.Path, err = subvolidResolve(mnt, info.RootID)
+		info.Path, err = subvolidResolve(mnt, objectID(info.RootID))
 	}
 	return info, err
 }

@@ -77,7 +77,7 @@ func Send(w io.Writer, parent string, subvols ...string) error {
 			if err != nil {
 				return fmt.Errorf("cannot find subvolume %s: %v", rel, err)
 			}
-			rootID = si.RootID
+			rootID = objectID(si.RootID)
 			parentID, err = findGoodParent(mfs.f, rootID, cloneSrc)
 			if err != nil {
 				return fmt.Errorf("cannot find good parent for %v: %v", rel, err)
@@ -205,8 +205,8 @@ func findGoodParent(mnt *os.File, rootID objectID, cloneSrc []objectID) (objectI
 		return 0, fmt.Errorf("get parent failed: %v", err)
 	}
 	for _, id := range cloneSrc {
-		if id == parent.RootID {
-			return parent.RootID, nil
+		if id == objectID(parent.RootID) {
+			return objectID(parent.RootID), nil
 		}
 	}
 	var (
@@ -236,10 +236,10 @@ func findGoodParent(mnt *os.File, rootID objectID, cloneSrc []objectID) (objectI
 		}
 	}
 	if bestParent != nil {
-		return bestParent.RootID, nil
+		return objectID(bestParent.RootID), nil
 	}
 	if !parent.ParentUUID.IsZero() {
-		return findGoodParent(mnt, parent.RootID, cloneSrc)
+		return findGoodParent(mnt, objectID(parent.RootID), cloneSrc)
 	}
 	return 0, ErrNotFound
 }
