@@ -1,4 +1,4 @@
-package gbtrfs
+package main
 
 import (
 	"fmt"
