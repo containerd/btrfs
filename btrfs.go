@@ -60,6 +60,14 @@ type Info struct {
 	CloneAlignment uint32
 }
 
+func (f *FS) SubVolumeID() (uint64, error) {
+	id, err := getFileRootID(f.f)
+	if err != nil {
+		return 0, err
+	}
+	return uint64(id), nil
+}
+
 func (f *FS) Info() (out Info, err error) {
 	var arg btrfs_ioctl_fs_info_args
 	arg, err = iocFsInfo(f.f)
