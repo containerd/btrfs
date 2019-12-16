@@ -11,7 +11,7 @@ before_install:
     - ls /usr/include/btrfs
 
 install:
-    - go get -d ./...
+    - GO111MODULE="on" go mod vendor
     - go get -u github.com/vbatts/git-validation
     - go get -u github.com/kunalkushwaha/ltag
 
