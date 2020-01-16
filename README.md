@@ -15,7 +15,7 @@ This package may not cover all the use cases for btrfs. If something you need
 is missing, please don't hesitate to submit a PR.
 
 Note that due to struct alignment issues, this isn't yet fully native.
-Preferrably, this could be resolved, so contributions in this direction are
+Preferably, this could be resolved, so contributions in this direction are
 greatly appreciated.
 
 ## Applying License Header to New Files
