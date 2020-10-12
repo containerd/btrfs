@@ -3,6 +3,9 @@ language: go
 
 go:
   - "1.13.x"
+arch:
+  - AMD64
+  - ppc64le
 
 before_install:
     - sudo apt-get update
