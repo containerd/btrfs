@@ -1,0 +1,43 @@
+name: Go
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+
+  build:
+    name: Btrfs CI
+    runs-on: ubuntu-18.04
+    timeout-minutes: 5
+    steps:
+
+    - name: Set up Go
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.15
+      id: go
+
+    - name: Setup environment
+      shell: bash
+      run: |
+        echo "GOPATH=${{ github.workspace }}" >> $GITHUB_ENV
+        echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
+
+    - name: Check out code
+      uses: actions/checkout@v2
+      with:
+        path: src/github.com/containerd/btrfs
+        fetch-depth: 25
+
+    - name: Project checks
+      uses: containerd/project-checks@v1
+      with:
+        working-directory: src/github.com/containerd/btrfs
+
+    - name: Build
+      working-directory: src/github.com/containerd/btrfs
+      run: |
+        make vet binaries
