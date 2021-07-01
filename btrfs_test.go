@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+
+	btrfstest "github.com/containerd/btrfs/v2/test"
 )
 
 const sizeDef = 256 * 1024 * 1024
