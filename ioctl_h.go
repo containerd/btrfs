@@ -19,11 +19,12 @@ package btrfs
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"github.com/dennwc/ioctl"
 	"os"
 	"strconv"
 	"strings"
 	"unsafe"
+
+	"github.com/containerd/btrfs/v2/ioctl"
 )
 
 var order = binary.LittleEndian

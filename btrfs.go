@@ -18,12 +18,13 @@ package btrfs
 
 import (
 	"fmt"
-	"github.com/dennwc/ioctl"
 	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"syscall"
+
+	"github.com/containerd/btrfs/v2/ioctl"
 )
 
 const SuperMagic = 0x9123683E
