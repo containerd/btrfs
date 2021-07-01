@@ -14,12 +14,15 @@ type devReplaceItemState int
 
 type blockGroup uint64
 
-// This header contains the structure definitions and constants used
-// by file system objects that can be retrieved using
-// the BTRFS_IOC_SEARCH_TREE ioctl. That means basically anything that
-// is needed to describe a leaf node's key or item contents.
+// SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note
 
 const (
+
+	// This header contains the structure definitions and constants used
+	// by file system objects that can be retrieved using
+	// the BTRFS_IOC_SEARCH_TREE ioctl. That means basically anything that
+	// is needed to describe a leaf node's key or item contents.
+
 	// Holds pointers to all of the tree roots
 	rootTreeObjectid objectID = 1
 
@@ -231,15 +234,18 @@ const (
 	// data in the FS
 	stringItemKey treeKeyType = 253
 
+	// Maximum metadata block size (nodesize)
+	maxMetadataBlocksize = 65536
+
 	// 32 bytes in various csum fields
 	csumSize = 32
 
 	// Csum types
-	csumTypeCrc32 = 0
 
 	// Flags definitions for directory entry item type
 	// Used by:
 	// struct btrfs_dir_item.type
+	// Values 0..7 must match common file type values in fs_types.h.
 	ftUnknown fileType = 0
 	ftRegFile fileType = 1
 	ftDir     fileType = 2
@@ -318,8 +324,11 @@ const (
 	// Errors detected
 	superFlagError = (1 << 2)
 
-	superFlagSeeding  = (1 << 32)
-	superFlagMetadump = (1 << 33)
+	superFlagSeeding        = (1 << 32)
+	superFlagMetadump       = (1 << 33)
+	superFlagMetadumpV2     = (1 << 34)
+	superFlagChangingFsid   = (1 << 35)
+	superFlagChangingFsidV2 = (1 << 36)
 
 	// Items in the extent btree are used to record the objectid of the
 	// owner of the block and the number of references
@@ -335,8 +344,6 @@ const (
 	// This flag is only used internally by scrub and may be changed at any time
 	// it is only declared here to avoid collisions
 	extentFlagSuper = (1 << 48)
-
-	// Old style backrefs item
 
 	// Dev extents record free space on individual devices. The owner
 	// field points back to the chunk allocation mapping tree that allocated
@@ -373,6 +380,9 @@ const (
 	// the offset of generation_v2 is also used as the start for the memset
 	// when invalidating the fields.
 
+	// Btrfs root item used to be smaller than current size. The old format ends
+	// at where member generation_v2 is.
+
 	// This is used for both forward and backward root refs
 
 	// Profiles to operate on, single is denoted by
@@ -404,10 +414,6 @@ const (
 	// resumed after crash or unmount
 	// BTRFS_BALANCE_*
 
-	fileExtentInline   fileExtentType = 0
-	fileExtentReg      fileExtentType = 1
-	fileExtentPrealloc fileExtentType = 2
-
 	// Transaction id that created this extent
 	// Max number of bytes to hold this extent in ram
 	// when we split a compressed extent we can't know how big
@@ -437,13 +443,8 @@ const (
 	// Grow this item struct at the end for future enhancements and keep
 	// the existing values unchanged
 
-	devReplaceItemContReadingFromSrcdevModeAlways                     = 0
-	devReplaceItemContReadingFromSrcdevModeAvoid                      = 1
-	devReplaceItemStateNeverStarted               devReplaceItemState = 0
-	devReplaceItemStateStarted                    devReplaceItemState = 1
-	devReplaceItemStateSuspended                  devReplaceItemState = 2
-	devReplaceItemStateFinished                   devReplaceItemState = 3
-	devReplaceItemStateCanceled                   devReplaceItemState = 4
+	devReplaceItemContReadingFromSrcdevModeAlways = 0
+	devReplaceItemContReadingFromSrcdevModeAvoid  = 1
 
 	// Grow this item struct at the end for future enhancements and keep
 	// the existing values unchanged
@@ -458,6 +459,8 @@ const (
 	blockGroupRaid10   blockGroup = (1 << 6)
 	blockGroupRaid5    blockGroup = (1 << 7)
 	blockGroupRaid6    blockGroup = (1 << 8)
+	blockGroupRaid1c3  blockGroup = (1 << 9)
+	blockGroupRaid1c4  blockGroup = (1 << 10)
 
 	// We need a bit for restriper to be able to tell when chunks of type
 	// SINGLE are available. This "extended" profile format is used in
