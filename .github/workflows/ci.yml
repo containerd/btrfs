@@ -43,3 +43,8 @@ jobs:
       working-directory: src/github.com/containerd/btrfs
       run: |
         sudo go test -v ./...
+
+    - name: Build gbtrfs
+      working-directory: src/github.com/containerd/btrfs/cmd/gbtrfs
+      run: |
+        go build .
