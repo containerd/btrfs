@@ -2,12 +2,13 @@ package btrfs
 
 import (
 	"fmt"
-	"github.com/dennwc/btrfs/mtab"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"unsafe"
+
+	"github.com/containerd/btrfs/v2/mtab"
 )
 
 func isBtrfs(path string) (bool, error) {

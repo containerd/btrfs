@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dennwc/btrfs"
+	"github.com/containerd/btrfs/v2"
 	"github.com/spf13/cobra"
 )
 

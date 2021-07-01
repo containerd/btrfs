@@ -3,10 +3,11 @@ package send
 import (
 	"errors"
 	"fmt"
-	"github.com/dennwc/btrfs"
 	"io"
 	"io/ioutil"
 	"time"
+
+	"github.com/containerd/btrfs/v2"
 )
 
 func NewStreamReader(r io.Reader) (*StreamReader, error) {

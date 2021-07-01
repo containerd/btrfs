@@ -1,7 +1,6 @@
 package btrfs
 
 import (
-	"github.com/dennwc/btrfs/test"
 	"io"
 	"io/ioutil"
 	"os"
