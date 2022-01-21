@@ -380,12 +380,67 @@ func SubvolDelete(path string) error {
 	return nil
 }
 
+func SubvolSetQuota(path string, sizeByte uint64) error {
+	dir, err := openDir(path)
+	if err != nil {
+		return err
+	}
+	defer closeDir(dir)
+
+	var args C.struct_btrfs_ioctl_qgroup_limit_args
+	args.lim.max_referenced = C.__u64(sizeByte)
+	args.lim.flags = C.BTRFS_QGROUP_LIMIT_MAX_RFER
+	if err := ioctl(getDirFd(dir), C.BTRFS_IOC_QGROUP_LIMIT, uintptr(unsafe.Pointer(&args))); err != nil {
+		return fmt.Errorf("failed set subvolume quota %v: %w", path, err)
+	}
+	return nil
+}
+
+// SubvolRescanQuota after delete subvolume with quota, need rescan quota
+func SubvolRescanQuota(rootPath string) error {
+	dir, err := openDir(rootPath)
+	if err != nil {
+		return err
+	}
+	defer closeDir(dir)
+
+	var args C.struct_btrfs_ioctl_quota_rescan_args
+	if err := ioctl(getDirFd(dir), C.BTRFS_IOC_QUOTA_RESCAN_WAIT, uintptr(unsafe.Pointer(&args))); err != nil {
+		return fmt.Errorf("failed rescan quota %v: %w", rootPath, err)
+	}
+	return nil
+}
+
+func openDir(path string) (*C.DIR, error) {
+	Cpath := C.CString(path)
+	defer free(Cpath)
+
+	dir := C.opendir(Cpath)
+	if dir == nil {
+		return nil, fmt.Errorf("Can't open dir")
+	}
+	return dir, nil
+}
+
+func closeDir(dir *C.DIR) {
+	if dir != nil {
+		C.closedir(dir)
+	}
+}
+
+func getDirFd(dir *C.DIR) uintptr {
+	return uintptr(C.dirfd(dir))
+}
+
+func free(p *C.char) {
+	C.free(unsafe.Pointer(p))
+}
+
 func openSubvolDir(path string) (*os.File, error) {
 	fp, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("opening %v as subvolume failed: %w", path, err)
 	}
-
 	return fp, nil
 }
 

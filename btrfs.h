@@ -15,6 +15,8 @@
 */
 
 #include <stddef.h>
+#include <stdlib.h>
+#include <dirent.h>
 #include <linux/magic.h>
 #include <btrfs/ioctl.h>
 #include <btrfs/ctree.h>
