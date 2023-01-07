@@ -17,8 +17,7 @@
 package btrfs
 
 /*
-#include <stddef.h>
-#include <btrfs/ioctl.h>
+#include <linux/magic.h>
 #include "btrfs.h"
 
 static char* get_name_btrfs_ioctl_vol_args_v2(struct btrfs_ioctl_vol_args_v2* btrfs_struct) {
@@ -154,13 +153,13 @@ func subvolMap(path string) (map[uint64]*Info, error) {
 				// get an entry of the objectid, with name, but the parent is
 				// the offset.
 
-				nname := C.btrfs_stack_root_ref_name_len(&rr)
+				nname := le16ToNative(rr.name_len)
 				name := string(buf[C.sizeof_struct_btrfs_root_ref : C.sizeof_struct_btrfs_root_ref+uintptr(nname)])
 
 				info.ID = uint64(sh.objectid)
 				info.ParentID = uint64(sh.offset)
 				info.Name = name
-				info.DirID = uint64(C.btrfs_stack_root_ref_dirid(&rr))
+				info.DirID = le64ToNative(rr.dirid)
 
 				subvolsByID[uint64(sh.objectid)] = info
 			} else if sh._type == C.BTRFS_ROOT_ITEM_KEY &&
@@ -185,8 +184,8 @@ func subvolMap(path string) (map[uint64]*Info, error) {
 				info.ParentUUID = uuidString(&gri.parent_uuid)
 				info.ReceivedUUID = uuidString(&gri.received_uuid)
 
-				info.Generation = uint64(gri.gen)
-				info.OriginalGeneration = uint64(gri.ogen)
+				info.Generation = le64ToNative(gri.generation)
+				info.OriginalGeneration = le64ToNative(gri.otransid)
 
 				subvolsByID[uint64(sh.objectid)] = info
 			}

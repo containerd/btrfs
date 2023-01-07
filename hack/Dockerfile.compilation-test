@@ -1,0 +1,18 @@
+# Dockerfile for testing compilation with an old version of the kernel headers.
+
+ARG GOLANG_VERSION=1.19
+# LINUX_VERSION must be >= 4.12 (https://github.com/torvalds/linux/commit/fcc8487d477a3452a1d0ccbdd4c5e0e1e3cb8bed)
+ARG LINUX_VERSION=4.12
+
+FROM golang:${GOLANG_VERSION}
+ARG LINUX_VERSION
+RUN curl -sSL -O "https://mirrors.edge.kernel.org/pub/linux/kernel/v$(echo ${LINUX_VERSION} | cut -d. -f1).x/linux-${LINUX_VERSION}.tar.gz"
+RUN tar Cxzf / "linux-${LINUX_VERSION}.tar.gz" && \
+  cd "/linux-${LINUX_VERSION}" && \
+  make headers_install INSTALL_HDR_PATH=/usr2 && \
+  for f in /usr2/include/*; do rm -rf "/usr/include/$(basename ${f})"; done && \
+  cp -a /usr2/include /usr
+
+COPY . /go/src/github.com/containerd/btrfs
+WORKDIR /go/src/github.com/containerd/btrfs
+RUN make binaries
