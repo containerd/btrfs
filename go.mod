@@ -1,3 +1,3 @@
-module github.com/containerd/btrfs
+module github.com/containerd/btrfs/v2
 
 go 1.19

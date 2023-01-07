@@ -23,7 +23,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/containerd/btrfs"
+	"github.com/containerd/btrfs/v2"
 )
 
 var (
