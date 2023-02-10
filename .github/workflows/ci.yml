@@ -40,5 +40,9 @@ jobs:
     - name: Build
       working-directory: src/github.com/containerd/btrfs
       run: |
-        sudo apt-get update && sudo apt-get install -y libbtrfs-dev
         make vet binaries
+
+    - name: Build with an old version of kernel headers
+      working-directory: src/github.com/containerd/btrfs
+      run: |
+        DOCKER_BUILDKIT=1 docker build -f hack/Dockerfile.compilation-test .
