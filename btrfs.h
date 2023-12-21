@@ -16,7 +16,7 @@
 
 #include <linux/version.h>
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
-#error "Headers from kernel >= 4.12 are required on compilation time (not on run time)"
+#warning "Headers from kernel >= 4.12 are required on compilation time (not on run time)"
 #endif
 #include <linux/btrfs.h>
 #include <linux/btrfs_tree.h>
